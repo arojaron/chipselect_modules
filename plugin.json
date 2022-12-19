@@ -1,0 +1,23 @@
+{
+  "slug": "chipselect",
+  "name": "chipselect",
+  "version": "2.0.0",
+  "license": "proprietary",
+  "brand": "chipselect",
+  "author": "",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "diffusion",
+      "name": "diffusion",
+      "description": "",
+      "tags": []
+    }
+  ]
+}
