@@ -13,7 +13,7 @@ private:
     DelayStage4 delay_stage_2;
     DelayStage4 delay_stage_3;
     DelayStage4 delay_stage_4;
-	MatrixMixer4 mixer_1;
+    MatrixMixer4 mixer_1;
     MatrixMixer4 mixer_2;
     MatrixMixer4 mixer_3;
     MatrixMixer4 mixer_4;
