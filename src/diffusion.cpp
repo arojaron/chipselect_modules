@@ -126,22 +126,22 @@ struct Diffusion : Module {
 		switch(mode){
 		case 0:
 			diff_stage = DiffusionStage4(lengths_A, mix_coefs_A, FS);
-			lights[MODE_1_LIGHT].setBrightness(1.0);
+			lights[MODE_1_LIGHT].setBrightness(0.5);
 			lights[MODE_4_LIGHT].setBrightness(0.0);
 			break;
 		case 1:
 			diff_stage = DiffusionStage4(lengths_B, mix_coefs_B, FS);
-			lights[MODE_2_LIGHT].setBrightness(1.0);
+			lights[MODE_2_LIGHT].setBrightness(0.5);
 			lights[MODE_1_LIGHT].setBrightness(0.0);
 			break;
 		case 2:
 			diff_stage = DiffusionStage4(lengths_C, mix_coefs_A, FS);
-			lights[MODE_3_LIGHT].setBrightness(1.0);
+			lights[MODE_3_LIGHT].setBrightness(0.5);
 			lights[MODE_2_LIGHT].setBrightness(0.0);
 			break;
 		case 3:
 			diff_stage = DiffusionStage4(lengths_D, mix_coefs_A, FS);
-			lights[MODE_4_LIGHT].setBrightness(1.0);
+			lights[MODE_4_LIGHT].setBrightness(0.5);
 			lights[MODE_3_LIGHT].setBrightness(0.0);
 			break;
 		default:
@@ -175,21 +175,21 @@ struct DiffusionWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/diffusion.svg")));
 
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(17.781, 19.252)), module, Diffusion::DIFF_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.89, 38.491)), module, Diffusion::DIFFMODSCALE_PARAM));
-		addParam(createParamCentered<ModeButton>(mm2px(Vec(12.252, 55.547)), module, Diffusion::MODE_SELECT_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 18.504)), module, Diffusion::DIFF_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(15.24, 34.448)), module, Diffusion::DIFFMODSCALE_PARAM));
+		addParam(createParamCentered<ModeButton>(mm2px(Vec(11.514, 72.418)), module, Diffusion::MODE_SELECT_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.79, 38.491)), module, Diffusion::DIFFMODSIGNAL_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.771, 104.53)), module, Diffusion::LEFT_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.771, 114.491)), module, Diffusion::RIGHT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.24, 44.665)), module, Diffusion::DIFFMODSIGNAL_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.971, 104.53)), module, Diffusion::LEFT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.971, 114.491)), module, Diffusion::RIGHT_INPUT));
 
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(24.759, 104.526)), module, Diffusion::LEFT_OUTPUT));
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(24.759, 114.457)), module, Diffusion::RIGHT_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(21.509, 104.526)), module, Diffusion::LEFT_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(21.509, 114.457)), module, Diffusion::RIGHT_OUTPUT));
 
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(20.307, 53.069)), module, Diffusion::MODE_1_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(24.308, 53.069)), module, Diffusion::MODE_2_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(20.307, 58.024)), module, Diffusion::MODE_3_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(24.308, 58.024)), module, Diffusion::MODE_4_LIGHT));
+		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(19.966, 65.11)), module, Diffusion::MODE_1_LIGHT));
+		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(19.966, 69.982)), module, Diffusion::MODE_2_LIGHT));
+		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(19.966, 74.854)), module, Diffusion::MODE_3_LIGHT));
+		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(19.966, 79.726)), module, Diffusion::MODE_4_LIGHT));
 	}
 };
 
