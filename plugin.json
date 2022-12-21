@@ -18,6 +18,18 @@
       "name": "diffusion",
       "description": "",
       "tags": []
+    },
+    {
+      "slug": "reverb",
+      "name": "reverb",
+      "description": "",
+      "tags": []
+    },
+    {
+      "slug": "diffusion_designer",
+      "name": "diffusion_designer",
+      "description": "",
+      "tags": []
     }
   ]
 }

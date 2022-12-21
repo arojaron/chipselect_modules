@@ -3,9 +3,6 @@
 #include "delay_stage_4.hpp"
 #include "matrix_mixer_4.hpp"
 
-typedef StageLengths DiffusorLengths[4];
-typedef MixerCoefficients DiffusorMixers[4];
-
 struct DiffusionStage4{
 private:
 	float FS;
@@ -19,7 +16,7 @@ private:
     MatrixMixer4 mixer_4;
 
 public:
-    DiffusionStage4(DiffusorLengths lengths, DiffusorMixers mix_coefs, float FS)
+    DiffusionStage4(StageLengths lengths[4], Mixer4Coefficients mix_coefs[4], float FS)
     : FS(FS),
       delay_stage_1(DelayStage4(lengths[0], FS)),
       delay_stage_2(DelayStage4(lengths[1], FS)),
