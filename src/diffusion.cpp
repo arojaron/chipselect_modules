@@ -1,19 +1,9 @@
 #include "plugin.hpp"
-#include "diffusion_stage.hpp"
 
-simd::float_4 lens[4] = {
-	simd::float_4(0.0, 0.13231882452964783, 0.32141810655593872, 0.13058231770992279),
-	simd::float_4(0.0, 0.655509352684021, 0.20878803730010986, 0.0019487274112179875),
-	simd::float_4(0.0, 0.63371104001998901, 0.32119685411453247, 0.58446371555328369),
-	simd::float_4(0.0, 0.73894518613815308, 0.64278435707092285, 0.54876101016998291)
-};
+#include "rev_diffusion_stage.hpp"
 
-simd::float_4 norms[4] = {
-	simd::float_4(-0.70389324426651001, 0.71581447124481201, 0.28890848159790039, 0.054718136787414551),
-	simd::float_4(-0.13980937004089355, 0.34750247001647949, 0.45920848846435547, -0.1774132251739502),
-	simd::float_4(0.89756679534912109, -0.24786150455474854, 0.14391446113586426, -0.12117087841033936),
-	simd::float_4(0.88379204273223877, -0.17205017805099487, 0.62125051021575928, -0.30143225193023682),
-};
+extern simd::float_4 diff_lengths[4];
+extern simd::float_4 mixer_normals[4];
 
 struct Diffusion : Module {
 	enum ParamId {
@@ -43,10 +33,16 @@ struct Diffusion : Module {
 
 	unsigned mode = 0;
 	float FS = 48000.0;
-	DiffusionStage4 diff_stage;
+	DiffusionStage stage1;
+	DiffusionStage stage2;
+	DiffusionStage stage3;
+	DiffusionStage stage4;
 
 	Diffusion()
-	: diff_stage(DiffusionStage4(lens, norms, FS))
+	: stage1(DiffusionStage(diff_lengths[0], mixer_normals[0], FS)),
+	  stage2(DiffusionStage(diff_lengths[1], mixer_normals[1], FS)),
+	  stage3(DiffusionStage(diff_lengths[2], mixer_normals[2], FS)),
+	  stage4(DiffusionStage(diff_lengths[3], mixer_normals[3], FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion depth");
@@ -60,18 +56,24 @@ struct Diffusion : Module {
 	}
 
 	void process(const ProcessArgs& args) override 
-	{			
+	{
 		float diff_depth = params[DIFF_PARAM].getValue();
 		float diff_mod_scale = params[DIFFMODSCALE_PARAM].getValue();
 		float diff_mod = inputs[DIFFMODSIGNAL_INPUT].getVoltage();
 		diff_depth = dsp::cubic(diff_depth + 0.1*diff_mod*diff_mod_scale);
-		diff_stage.setScale(diff_depth);
+		stage1.setScale(diff_depth);
+		stage2.setScale(diff_depth);
+		stage3.setScale(diff_depth);
+		stage4.setScale(diff_depth);
 
 		float left = inputs[LEFT_INPUT].getVoltage();
 		float right = inputs[RIGHT_INPUT].isConnected() ? inputs[RIGHT_INPUT].getVoltage() : left;
 
 		simd::float_4 v = simd::float_4(left, right, left, right);
-		v = diff_stage.process(v);
+		v = stage1.process(v);
+		v = stage2.process(v);
+		v = stage3.process(v);
+		v = stage4.process(v);
 
 		outputs[LEFT_OUTPUT].setVoltage(v[0] + v[2]);
 		outputs[RIGHT_OUTPUT].setVoltage(v[1] + v[3]);
@@ -81,22 +83,34 @@ struct Diffusion : Module {
 	{
 		switch(mode){
 		case 0:
-			diff_stage = DiffusionStage4(lens, norms, FS);
+			stage1 = DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
+			stage2 = DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
+			stage3 = DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
+			stage4 = DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
 			lights[MODE_1_LIGHT].setBrightness(0.7);
 			lights[MODE_4_LIGHT].setBrightness(0.0);
 			break;
 		case 1:
-			diff_stage = DiffusionStage4(lens, norms, FS);
+			stage1 = DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
+			stage2 = DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
+			stage3 = DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
+			stage4 = DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
 			lights[MODE_2_LIGHT].setBrightness(0.7);
 			lights[MODE_1_LIGHT].setBrightness(0.0);
 			break;
 		case 2:
-			diff_stage = DiffusionStage4(lens, norms, FS);
+			stage1 = DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
+			stage2 = DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
+			stage3 = DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
+			stage4 = DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
 			lights[MODE_3_LIGHT].setBrightness(0.7);
 			lights[MODE_2_LIGHT].setBrightness(0.0);
 			break;
 		case 3:
-			diff_stage = DiffusionStage4(lens, norms, FS);
+			stage1 = DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
+			stage2 = DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
+			stage3 = DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
+			stage4 = DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
 			lights[MODE_4_LIGHT].setBrightness(0.7);
 			lights[MODE_3_LIGHT].setBrightness(0.0);
 			break;

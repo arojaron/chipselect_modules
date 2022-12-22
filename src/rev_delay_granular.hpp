@@ -13,7 +13,7 @@ public:
     Delay2H(unsigned cap) 
     : capacity(cap)
     {
-        buffer = std::vector<float>(capacity);
+        buffer = std::vector<float>(capacity, 0.0);
     }
 
     void step(float in, float delay_1, float delay_2, float* out_1, float* out_2)

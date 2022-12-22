@@ -1,4 +1,5 @@
 #pragma once
+
 #include "plugin.hpp"
 
 struct MatrixMixer4{
@@ -31,10 +32,11 @@ public:
 
     simd::float_4 process(simd::float_4 v)
     {
-        float c1 = sumFloat4(v*rows[0]);
-        float c2 = sumFloat4(v*rows[1]);
-        float c3 = sumFloat4(v*rows[2]);
-        float c4 = sumFloat4(v*rows[3]);
-        return simd::float_4(c1, c2, c3, c4);
+        simd::float_4 ret;
+        ret[0] = sumFloat4(v*rows[0]);
+        ret[1] = sumFloat4(v*rows[1]);
+        ret[2] = sumFloat4(v*rows[2]);
+        ret[3] = sumFloat4(v*rows[3]);
+        return ret;
     }
 };

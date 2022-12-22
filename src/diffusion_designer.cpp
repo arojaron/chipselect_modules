@@ -1,7 +1,6 @@
 #include "plugin.hpp"
 
-#include "delay_stage_4.hpp"
-#include "matrix_mixer_4.hpp"
+#include "rev_diffusion_stage.hpp"
 
 static simd::float_4 const init_lengths = simd::float_4::zero();
 static simd::float_4 const init_normal = simd::float_4(1, 1, 1, 1);
@@ -60,25 +59,18 @@ struct DiffusionDesigner : Module {
 	};
 
 	float FS = 48000.0;
-	DelayStage4 stage1;
-	DelayStage4 stage2;
-	DelayStage4 stage3;
-	DelayStage4 stage4;
-	MatrixMixer4 mixer1;
-	MatrixMixer4 mixer2;
-	MatrixMixer4 mixer3;
-	MatrixMixer4 mixer4;
+	
+	DiffusionStage stage1;
+	DiffusionStage stage2;
+	DiffusionStage stage3;
+	DiffusionStage stage4;
 	bool gen = true;
 
 	DiffusionDesigner() 
-	: stage1(DelayStage4(init_lengths, FS)),
-	  stage2(DelayStage4(init_lengths, FS)),
-	  stage3(DelayStage4(init_lengths, FS)),
-	  stage4(DelayStage4(init_lengths, FS)),
-	  mixer1(MatrixMixer4(init_normal)),
-	  mixer2(MatrixMixer4(init_normal)),
-	  mixer3(MatrixMixer4(init_normal)),
-	  mixer4(MatrixMixer4(init_normal))
+	: stage1(DiffusionStage(init_lengths, init_normal, FS)),
+	  stage2(DiffusionStage(init_lengths, init_normal, FS)),
+	  stage3(DiffusionStage(init_lengths, init_normal, FS)),
+	  stage4(DiffusionStage(init_lengths, init_normal, FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(DEL11_PARAM, 0.f, 1.f, 0.f, "");
@@ -133,14 +125,10 @@ struct DiffusionDesigner : Module {
 			simd::float_4 normals2 = simd::float_4(params[MIX21_PARAM].getValue(), params[MIX22_PARAM].getValue(), params[MIX23_PARAM].getValue(), params[MIX24_PARAM].getValue());
 			simd::float_4 normals3 = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
 			simd::float_4 normals4 = simd::float_4(params[MIX41_PARAM].getValue(), params[MIX42_PARAM].getValue(), params[MIX43_PARAM].getValue(), params[MIX44_PARAM].getValue());
-			stage1 = DelayStage4(lengths1, FS);
-			stage2 = DelayStage4(lengths2, FS);
-			stage3 = DelayStage4(lengths3, FS);
-			stage4 = DelayStage4(lengths4, FS);
-			mixer1 = MatrixMixer4(normals1);
-			mixer2 = MatrixMixer4(normals2);
-			mixer3 = MatrixMixer4(normals3);
-			mixer4 = MatrixMixer4(normals4);
+			stage1 = DiffusionStage(lengths1, normals1, FS);
+			stage2 = DiffusionStage(lengths2, normals2, FS);
+			stage3 = DiffusionStage(lengths3, normals3, FS);
+			stage4 = DiffusionStage(lengths4, normals4, FS);
 			gen = false;
 		}
 
@@ -158,10 +146,10 @@ struct DiffusionDesigner : Module {
 		simd::float_4 v = simd::float_4(left, right, left, right);
 		
 		v = v + back_fed;
-		v = mixer1.process(stage1.process(v));
-		v = mixer2.process(stage2.process(v));
-		v = mixer3.process(stage3.process(v));
-		v = mixer4.process(stage4.process(v));
+		v = stage1.process(v);
+		v = stage2.process(v);
+		v = stage3.process(v);
+		v = stage4.process(v);
 
 		outputs[LEFT_OUTPUT].setVoltage(v[0] + v[2]);
 		outputs[RIGHT_OUTPUT].setVoltage(v[1] + v[3]);

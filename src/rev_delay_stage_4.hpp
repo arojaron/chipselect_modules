@@ -1,15 +1,17 @@
 #pragma once
-#include "delay_granular.hpp"
+
+#include "rev_delay_granular.hpp"
 
 struct DelayStage4{
 private:
+    float grain_sharpness = 4.0;    // [1.0; inf)
+    float grain_period = 0.01;      // s
+    
     GrainClock clock;
     Delay2H lines[4];
     simd::float_4 delay_scale = simd::float_4::zero();
     simd::float_4 scale_current = simd::float_4::zero();
 	simd::float_4 scale_previous = simd::float_4::zero();
-    float grain_sharpness = 4.0;    // [1.0; inf)
-    float grain_period = 0.01;      // s
 
 public:
     DelayStage4(simd::float_4 lengths, float FS)
