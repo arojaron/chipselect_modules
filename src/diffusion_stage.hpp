@@ -16,16 +16,16 @@ private:
     MatrixMixer4 mixer_4;
 
 public:
-    DiffusionStage4(StageLengths lengths[4], Mixer4Coefficients mix_coefs[4], float FS)
+    DiffusionStage4(simd::float_4 lengths[4], simd::float_4 mixer_normals[4], float FS)
     : FS(FS),
       delay_stage_1(DelayStage4(lengths[0], FS)),
       delay_stage_2(DelayStage4(lengths[1], FS)),
       delay_stage_3(DelayStage4(lengths[2], FS)),
       delay_stage_4(DelayStage4(lengths[3], FS)),
-      mixer_1(MatrixMixer4(mix_coefs[0])),
-      mixer_2(MatrixMixer4(mix_coefs[1])),
-      mixer_3(MatrixMixer4(mix_coefs[2])),
-      mixer_4(MatrixMixer4(mix_coefs[3])) {}
+      mixer_1(MatrixMixer4(mixer_normals[0])),
+      mixer_2(MatrixMixer4(mixer_normals[1])),
+      mixer_3(MatrixMixer4(mixer_normals[2])),
+      mixer_4(MatrixMixer4(mixer_normals[3])) {}
 
     DiffusionStage4& operator=(DiffusionStage4 const& other)
     {

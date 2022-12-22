@@ -1,6 +1,19 @@
 #include "plugin.hpp"
 #include "diffusion_stage.hpp"
-#include "reverb_constants.hpp"
+
+simd::float_4 lens[4] = {
+	simd::float_4(0.0, 0.13231882452964783, 0.32141810655593872, 0.13058231770992279),
+	simd::float_4(0.0, 0.655509352684021, 0.20878803730010986, 0.0019487274112179875),
+	simd::float_4(0.0, 0.63371104001998901, 0.32119685411453247, 0.58446371555328369),
+	simd::float_4(0.0, 0.73894518613815308, 0.64278435707092285, 0.54876101016998291)
+};
+
+simd::float_4 norms[4] = {
+	simd::float_4(-0.70389324426651001, 0.71581447124481201, 0.28890848159790039, 0.054718136787414551),
+	simd::float_4(-0.13980937004089355, 0.34750247001647949, 0.45920848846435547, -0.1774132251739502),
+	simd::float_4(0.89756679534912109, -0.24786150455474854, 0.14391446113586426, -0.12117087841033936),
+	simd::float_4(0.88379204273223877, -0.17205017805099487, 0.62125051021575928, -0.30143225193023682),
+};
 
 struct Diffusion : Module {
 	enum ParamId {
@@ -33,7 +46,7 @@ struct Diffusion : Module {
 	DiffusionStage4 diff_stage;
 
 	Diffusion()
-	: diff_stage(DiffusionStage4(lengths_A, mix_coefs_A, FS))
+	: diff_stage(DiffusionStage4(lens, norms, FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion depth");
@@ -68,22 +81,22 @@ struct Diffusion : Module {
 	{
 		switch(mode){
 		case 0:
-			diff_stage = DiffusionStage4(lengths_A, mix_coefs_A, FS);
+			diff_stage = DiffusionStage4(lens, norms, FS);
 			lights[MODE_1_LIGHT].setBrightness(0.7);
 			lights[MODE_4_LIGHT].setBrightness(0.0);
 			break;
 		case 1:
-			diff_stage = DiffusionStage4(lengths_B, mix_coefs_B, FS);
+			diff_stage = DiffusionStage4(lens, norms, FS);
 			lights[MODE_2_LIGHT].setBrightness(0.7);
 			lights[MODE_1_LIGHT].setBrightness(0.0);
 			break;
 		case 2:
-			diff_stage = DiffusionStage4(lengths_C, mix_coefs_A, FS);
+			diff_stage = DiffusionStage4(lens, norms, FS);
 			lights[MODE_3_LIGHT].setBrightness(0.7);
 			lights[MODE_2_LIGHT].setBrightness(0.0);
 			break;
 		case 3:
-			diff_stage = DiffusionStage4(lengths_D, mix_coefs_A, FS);
+			diff_stage = DiffusionStage4(lens, norms, FS);
 			lights[MODE_4_LIGHT].setBrightness(0.7);
 			lights[MODE_3_LIGHT].setBrightness(0.0);
 			break;

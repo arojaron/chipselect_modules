@@ -3,7 +3,7 @@
 #include "delay_stage_4.hpp"
 #include "matrix_mixer_4.hpp"
 
-static float const init_lengths[4] = {0, 0, 0, 0};
+static simd::float_4 const init_lengths = simd::float_4::zero();
 static simd::float_4 const init_normal = simd::float_4(1, 1, 1, 1);
 
 struct DiffusionDesigner : Module {
@@ -125,10 +125,10 @@ struct DiffusionDesigner : Module {
 	void process(const ProcessArgs& args) override
 	{
 		if(gen){
-			float lengths1[4] = {params[DEL11_PARAM].getValue(), params[DEL12_PARAM].getValue(), params[DEL13_PARAM].getValue(), params[DEL14_PARAM].getValue()};
-			float lengths2[4] = {params[DEL21_PARAM].getValue(), params[DEL22_PARAM].getValue(), params[DEL23_PARAM].getValue(), params[DEL24_PARAM].getValue()};
-			float lengths3[4] = {params[DEL31_PARAM].getValue(), params[DEL32_PARAM].getValue(), params[DEL33_PARAM].getValue(), params[DEL34_PARAM].getValue()};
-			float lengths4[4] = {params[DEL41_PARAM].getValue(), params[DEL42_PARAM].getValue(), params[DEL43_PARAM].getValue(), params[DEL44_PARAM].getValue()};
+			simd::float_4 lengths1 = simd::float_4(params[DEL11_PARAM].getValue(), params[DEL12_PARAM].getValue(), params[DEL13_PARAM].getValue(), params[DEL14_PARAM].getValue());
+			simd::float_4 lengths2 = simd::float_4(params[DEL21_PARAM].getValue(), params[DEL22_PARAM].getValue(), params[DEL23_PARAM].getValue(), params[DEL24_PARAM].getValue());
+			simd::float_4 lengths3 = simd::float_4(params[DEL31_PARAM].getValue(), params[DEL32_PARAM].getValue(), params[DEL33_PARAM].getValue(), params[DEL34_PARAM].getValue());
+			simd::float_4 lengths4 = simd::float_4(params[DEL41_PARAM].getValue(), params[DEL42_PARAM].getValue(), params[DEL43_PARAM].getValue(), params[DEL44_PARAM].getValue());
 			simd::float_4 normals1 = simd::float_4(params[MIX11_PARAM].getValue(), params[MIX12_PARAM].getValue(), params[MIX13_PARAM].getValue(), params[MIX14_PARAM].getValue());
 			simd::float_4 normals2 = simd::float_4(params[MIX21_PARAM].getValue(), params[MIX22_PARAM].getValue(), params[MIX23_PARAM].getValue(), params[MIX24_PARAM].getValue());
 			simd::float_4 normals3 = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
@@ -184,38 +184,38 @@ struct DiffusionDesignerWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/diffusion_designer.svg")));
 
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 16.633)), module, DiffusionDesigner::DEL11_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 16.633)), module, DiffusionDesigner::DEL21_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 16.633)), module, DiffusionDesigner::DEL31_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 16.633)), module, DiffusionDesigner::DEL41_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 25.183)), module, DiffusionDesigner::DEL12_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 25.183)), module, DiffusionDesigner::DEL22_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 25.183)), module, DiffusionDesigner::DEL32_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 25.183)), module, DiffusionDesigner::DEL42_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 33.732)), module, DiffusionDesigner::DEL13_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 33.732)), module, DiffusionDesigner::DEL23_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 33.732)), module, DiffusionDesigner::DEL33_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 33.732)), module, DiffusionDesigner::DEL43_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 42.282)), module, DiffusionDesigner::DEL14_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 42.282)), module, DiffusionDesigner::DEL24_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 42.282)), module, DiffusionDesigner::DEL34_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 42.282)), module, DiffusionDesigner::DEL44_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 59.381)), module, DiffusionDesigner::MIX11_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 59.381)), module, DiffusionDesigner::MIX21_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 59.381)), module, DiffusionDesigner::MIX31_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 59.381)), module, DiffusionDesigner::MIX41_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 67.931)), module, DiffusionDesigner::MIX12_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 67.931)), module, DiffusionDesigner::MIX22_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 67.931)), module, DiffusionDesigner::MIX32_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 67.931)), module, DiffusionDesigner::MIX42_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 76.481)), module, DiffusionDesigner::MIX13_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 76.481)), module, DiffusionDesigner::MIX23_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 76.481)), module, DiffusionDesigner::MIX33_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 76.481)), module, DiffusionDesigner::MIX43_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.814, 85.031)), module, DiffusionDesigner::MIX14_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.258, 85.031)), module, DiffusionDesigner::MIX24_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.702, 85.031)), module, DiffusionDesigner::MIX34_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.146, 85.031)), module, DiffusionDesigner::MIX44_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 16.633)), module, DiffusionDesigner::DEL11_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 16.633)), module, DiffusionDesigner::DEL21_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 16.633)), module, DiffusionDesigner::DEL31_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 16.633)), module, DiffusionDesigner::DEL41_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 25.183)), module, DiffusionDesigner::DEL12_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 25.183)), module, DiffusionDesigner::DEL22_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 25.183)), module, DiffusionDesigner::DEL32_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 25.183)), module, DiffusionDesigner::DEL42_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 33.732)), module, DiffusionDesigner::DEL13_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 33.732)), module, DiffusionDesigner::DEL23_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 33.732)), module, DiffusionDesigner::DEL33_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 33.732)), module, DiffusionDesigner::DEL43_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 42.282)), module, DiffusionDesigner::DEL14_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 42.282)), module, DiffusionDesigner::DEL24_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 42.282)), module, DiffusionDesigner::DEL34_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 42.282)), module, DiffusionDesigner::DEL44_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 59.381)), module, DiffusionDesigner::MIX11_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 59.381)), module, DiffusionDesigner::MIX21_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 59.381)), module, DiffusionDesigner::MIX31_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 59.381)), module, DiffusionDesigner::MIX41_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 67.931)), module, DiffusionDesigner::MIX12_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 67.931)), module, DiffusionDesigner::MIX22_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 67.931)), module, DiffusionDesigner::MIX32_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 67.931)), module, DiffusionDesigner::MIX42_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 76.481)), module, DiffusionDesigner::MIX13_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 76.481)), module, DiffusionDesigner::MIX23_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 76.481)), module, DiffusionDesigner::MIX33_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 76.481)), module, DiffusionDesigner::MIX43_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(11.814, 85.031)), module, DiffusionDesigner::MIX14_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(24.258, 85.031)), module, DiffusionDesigner::MIX24_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(36.702, 85.031)), module, DiffusionDesigner::MIX34_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.146, 85.031)), module, DiffusionDesigner::MIX44_PARAM));
 		addParam(createParamCentered<GenerateButton>(mm2px(Vec(30.48, 105.04)), module, DiffusionDesigner::GENERATE_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(15.928, 98.425)), module, DiffusionDesigner::DIFF_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(45.032, 98.425)), module, DiffusionDesigner::FEEDBACK_PARAM));

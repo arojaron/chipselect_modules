@@ -1,9 +1,6 @@
 #pragma once
 #include "plugin.hpp"
 
-typedef float const Mixer4Coefficients[16];
-typedef simd::float_4 const NormalVector4;
-
 struct MatrixMixer4{
 private:
     simd::float_4 rows[4];
@@ -14,14 +11,7 @@ private:
     }
 
 public:
-    MatrixMixer4(Mixer4Coefficients coefs)
-    {
-        rows[0] = simd::float_4(coefs[0], coefs[1], coefs[2], coefs[3]);
-        rows[1] = simd::float_4(coefs[4], coefs[5], coefs[6], coefs[7]);
-        rows[2] = simd::float_4(coefs[8], coefs[9], coefs[10], coefs[11]);
-        rows[3] = simd::float_4(coefs[12], coefs[13], coefs[14], coefs[15]);
-    }
-    MatrixMixer4(NormalVector4 normal)
+    MatrixMixer4(simd::float_4 const normal)
     {
         simd::float_4 n0 = simd::float_4(normal[0]);
         simd::float_4 n1 = simd::float_4(normal[1]);

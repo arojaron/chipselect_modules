@@ -1,39 +1,41 @@
 #pragma once
 #include "delay_granular.hpp"
 
-typedef float const StageLengths[4];
-
 struct DelayStage4{
 private:
     GrainClock clock;
-    Delay2H line0;
-    Delay2H line1;
-    Delay2H line2;
-    Delay2H line3;
-    float delay_scale = 0.0;
-    float delay_scale_current = 0.0;
-	float delay_scale_previous = 0.0;
-    float grain_sharpness = 4.0;  // [1.0; inf)
+    Delay2H lines[4];
+    simd::float_4 delay_scale = simd::float_4::zero();
+    simd::float_4 scale_current = simd::float_4::zero();
+	simd::float_4 scale_previous = simd::float_4::zero();
+    float grain_sharpness = 4.0;    // [1.0; inf)
+    float grain_period = 0.01;      // s
 
 public:
-    DelayStage4(StageLengths lengths, float FS)
-    : clock(GrainClock(0.01*FS)), 
-      line0(Delay2H(lengths[0]*FS)), 
-      line1(Delay2H(lengths[1]*FS)), 
-      line2(Delay2H(lengths[2]*FS)), 
-      line3(Delay2H(lengths[3]*FS)) {}
+    DelayStage4(simd::float_4 lengths, float FS)
+    : clock(GrainClock(grain_period*FS)), 
+      lines{
+        Delay2H(lengths[0]*FS), 
+        Delay2H(lengths[1]*FS), 
+        Delay2H(lengths[2]*FS), 
+        Delay2H(lengths[3]*FS)} {}
 
     DelayStage4& operator=(DelayStage4 const& other)
     {
         clock = other.clock;
-        line0 = other.line0;
-        line1 = other.line1;
-        line2 = other.line2;
-        line3 = other.line3;
+        lines[0] = other.lines[0];
+        lines[1] = other.lines[1];
+        lines[2] = other.lines[2];
+        lines[3] = other.lines[3];
         return *this;
     }
       
     void setScale(float scale)
+    {
+        delay_scale = simd::float_4(scale);
+    }
+    
+    void setScale(simd::float_4 scale)
     {
         delay_scale = scale;
     }
@@ -41,23 +43,19 @@ public:
     simd::float_4 process(simd::float_4 in)
     {
         if(clock.process()){
-			delay_scale_previous = delay_scale_current;
-			delay_scale_current = delay_scale;
+			scale_previous = scale_current;
+			scale_current = delay_scale;
 		}
 		float index = clock.getIndex();
 
 		float A;
 		float B;
-        float ret[4];
-		line0.step(in[0], delay_scale_current, delay_scale_previous, &A, &B);
-		ret[0] = xfade(A, B, grain_sharpness*index);
-        line1.step(in[1], delay_scale_current, delay_scale_previous, &A, &B);
-		ret[1] = xfade(A, B, grain_sharpness*index);
-        line2.step(in[2], delay_scale_current, delay_scale_previous, &A, &B);
-		ret[2] = xfade(A, B, grain_sharpness*index);
-        line3.step(in[3], delay_scale_current, delay_scale_previous, &A, &B);
-		ret[3] = xfade(A, B, grain_sharpness*index);
+        simd::float_4 ret;
+        for(unsigned i = 0; i < 4; i++){
+            lines[i].step(in[i], scale_current[i], scale_previous[i], &A, &B);
+		    ret[i] = xfade(A, B, grain_sharpness*index);
+        }
 
-        return simd::float_4::load(ret);
+        return ret;
     }
 };

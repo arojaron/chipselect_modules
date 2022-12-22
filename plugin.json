@@ -20,14 +20,14 @@
       "tags": []
     },
     {
-      "slug": "reverb",
-      "name": "reverb",
+      "slug": "diffusion_designer",
+      "name": "diffusion_designer",
       "description": "",
       "tags": []
     },
     {
-      "slug": "diffusion_designer",
-      "name": "diffusion_designer",
+      "slug": "reverb",
+      "name": "reverb",
       "description": "",
       "tags": []
     }
