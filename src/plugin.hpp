@@ -8,6 +8,6 @@ using namespace rack;
 extern Plugin* pluginInstance;
 
 // Declare each Model, defined in each module source file
-extern Model* modelDiffusion;
-extern Model* modelDiffusionDesigner;
 extern Model* modelReverb;
+extern Model* modelReverbDesigner;
+extern Model* modelFilterTester;

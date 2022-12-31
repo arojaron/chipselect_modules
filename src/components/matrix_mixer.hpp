@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plugin.hpp"
+#include "rack.hpp"
 
 struct MatrixMixer4{
 private:

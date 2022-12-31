@@ -14,20 +14,20 @@
   "changelogUrl": "",
   "modules": [
     {
-      "slug": "diffusion",
-      "name": "diffusion",
-      "description": "",
-      "tags": []
-    },
-    {
-      "slug": "diffusion_designer",
-      "name": "diffusion_designer",
-      "description": "",
-      "tags": []
-    },
-    {
       "slug": "reverb",
       "name": "reverb",
+      "description": "",
+      "tags": []
+    },
+    {
+      "slug": "reverbDesigner",
+      "name": "reverbDesigner",
+      "description": "",
+      "tags": []
+    },
+    {
+      "slug": "FilterTester",
+      "name": "FilterTester",
       "description": "",
       "tags": []
     }

@@ -1,16 +1,19 @@
 #include "plugin.hpp"
 
-#include "rev_diffusion_stage.hpp"
+#include "components/diffusion_stage.hpp"
+#include "components/one_pole.hpp"
 
-extern simd::float_4 diff_lengths[4];
-extern simd::float_4 mixer_normals[4];
+extern simd::float_4 diff_lengths[];
+extern simd::float_4 mixer_normals[];
 
 struct Reverb : Module {
 	enum ParamId {
-		LENGTH_RATIO_C_PARAM,
+		LENGTH_RATIO_A_PARAM,
 		LENGTH_PARAM,
 		LENGTH_RATIO_B_PARAM,
-		LENGTH_RATIO_A_PARAM,
+		LENGTH_RATIO_C_PARAM,
+		HP_PARAM,
+		LP_PARAM,
 		DIFF_PARAM,
 		DIFF_MODE_PARAM,
 		FEEDBACK_PARAM,
@@ -36,6 +39,8 @@ struct Reverb : Module {
 	DiffusionStage diffusion3;
 	DiffusionStage diffusion4;
 	DiffusionStage delay;
+	OnePole4 hp_filter;
+	OnePole4 lp_filter;
 
 	Reverb() 
 	: diffusion1(DiffusionStage(diff_lengths[0], mixer_normals[0], FS)),
@@ -49,6 +54,8 @@ struct Reverb : Module {
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.f, "Length main", "s");
 		configParam(LENGTH_RATIO_B_PARAM, 0.f, 1.f, 0.f, "Length ratio B");
 		configParam(LENGTH_RATIO_A_PARAM, 0.f, 1.f, 0.f, "Length ratio A");
+		configParam(HP_PARAM, 0.f, 1.f, 0.f, "High pass");
+		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
 		configParam(FEEDBACK_PARAM, 0.f, 1.f, 0.f, "Feedback");
@@ -74,13 +81,23 @@ struct Reverb : Module {
 		simd::float_4 v = simd::float_4(left, right, left, right);
 
 		v = v + back_fed;
+
+		float hp_param = params[HP_PARAM].getValue();
+		hp_param *= hp_param*hp_param*hp_param*hp_param;
+		hp_filter.setFrequency(hp_param);
+		float lp_param = params[LP_PARAM].getValue();
+		lp_param *= lp_param*lp_param*lp_param*lp_param;
+		lp_filter.setFrequency(lp_param);
+		v = v-hp_filter.process(v);
+		v = lp_filter.process(v);
+
 		v = diffusion1.process(v);
 		v = diffusion2.process(v);
 		v = diffusion3.process(v);
 		v = diffusion4.process(v);
 
-		outputs[LEFT_OUTPUT].setVoltage(v[0] + v[2]);
-		outputs[RIGHT_OUTPUT].setVoltage(v[1] + v[3]);
+		outputs[LEFT_OUTPUT].setVoltage(v[0]);
+		outputs[RIGHT_OUTPUT].setVoltage(v[1]);
 
 		float delay0 = params[LENGTH_PARAM].getValue();
 		float delayA = delay0 * params[LENGTH_RATIO_A_PARAM].getValue();
@@ -116,13 +133,15 @@ struct ReverbWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/reverb.svg")));
 
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 15.171)), module, Reverb::LENGTH_RATIO_C_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(21.406, 24.806)), module, Reverb::LENGTH_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(45.822, 24.806)), module, Reverb::LENGTH_RATIO_B_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 34.442)), module, Reverb::LENGTH_RATIO_A_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(19.867, 63.49)), module, Reverb::DIFF_PARAM));
-		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(43.006, 63.49)), module, Reverb::DIFF_MODE_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(32.597, 93.356)), module, Reverb::FEEDBACK_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 12.552)), module, Reverb::LENGTH_RATIO_A_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(21.406, 22.187)), module, Reverb::LENGTH_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(45.822, 22.187)), module, Reverb::LENGTH_RATIO_B_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 31.822)), module, Reverb::LENGTH_RATIO_C_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(22.435, 50.14)), module, Reverb::HP_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.525, 50.14)), module, Reverb::LP_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(20.09, 72.486)), module, Reverb::DIFF_PARAM));
+		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(43.229, 72.486)), module, Reverb::DIFF_MODE_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(30.48, 93.356)), module, Reverb::FEEDBACK_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.336, 118.019)), module, Reverb::LEFT_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.691, 118.019)), module, Reverb::RIGHT_INPUT));

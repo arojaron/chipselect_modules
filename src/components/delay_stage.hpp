@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rev_delay_granular.hpp"
+#include "delay_granular.hpp"
 
 struct DelayStage4{
 private:

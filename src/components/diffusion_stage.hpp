@@ -1,7 +1,7 @@
 #pragma once
 
-#include "rev_delay_stage_4.hpp"
-#include "rev_matrix_mixer_4.hpp"
+#include "delay_stage.hpp"
+#include "matrix_mixer.hpp"
 
 struct DiffusionStage{
 private:
