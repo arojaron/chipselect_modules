@@ -5,7 +5,7 @@
 
 struct DiffusionStage{
 private:
-	float FS;
+    float FS;
     DelayStage4 delay_stage;
     MatrixMixer4 mixer;
 

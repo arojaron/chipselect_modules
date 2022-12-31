@@ -11,7 +11,7 @@ private:
     Delay2H lines[4];
     simd::float_4 delay_scale = simd::float_4::zero();
     simd::float_4 scale_current = simd::float_4::zero();
-	simd::float_4 scale_previous = simd::float_4::zero();
+    simd::float_4 scale_previous = simd::float_4::zero();
 
 public:
     DelayStage4(simd::float_4 lengths, float FS)
@@ -45,17 +45,17 @@ public:
     simd::float_4 process(simd::float_4 in)
     {
         if(clock.process()){
-			scale_previous = scale_current;
-			scale_current = delay_scale;
-		}
-		float index = clock.getIndex();
+            scale_previous = scale_current;
+            scale_current = delay_scale;
+        }
+        float index = clock.getIndex();
 
-		float A;
-		float B;
+        float A;
+        float B;
         simd::float_4 ret;
         for(unsigned i = 0; i < 4; i++){
             lines[i].step(in[i], scale_current[i], scale_previous[i], &A, &B);
-		    ret[i] = xfade(A, B, grain_sharpness*index);
+            ret[i] = xfade(A, B, grain_sharpness*index);
         }
 
         return ret;

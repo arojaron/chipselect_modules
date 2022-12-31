@@ -7,7 +7,7 @@ struct Delay2H{
 private:
     std::vector<float> buffer;
     unsigned capacity;
-	unsigned write_head = 0;
+    unsigned write_head = 0;
 
 public:
     Delay2H(unsigned cap) 
@@ -31,7 +31,7 @@ public:
         
         buffer[write_head] = in;
         write_head++;
-		if(write_head >= capacity) write_head = 0;
+        if(write_head >= capacity) write_head = 0;
 
         unsigned delay_1_samples = (unsigned)(delay_1*capacity);
         if(delay_1_samples){
@@ -79,13 +79,13 @@ public:
         return (float)clock*frequency;
     }
 
-	bool process(void)
+    bool process(void)
     {
-		clock++;
-		if (clock >= period){
-			clock = 0;
-			return true;
-		}
-		return false;
-	}
+        clock++;
+        if (clock >= period){
+            clock = 0;
+            return true;
+        }
+        return false;
+    }
 };
