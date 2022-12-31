@@ -23,14 +23,14 @@ struct FilterTester : Module {
 		LIGHTS_LEN
 	};
 
-	MatchedComplexLowPass filter;
+	chipselect::LowPass filter;
 
 	FilterTester() 
-	: filter(MatchedComplexLowPass(48000))
+	: filter(chipselect::LowPass(48000))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(LP_PARAM, 0.1f, 1.f, 1.f, "");
-		configParam(HP_PARAM, 0.5f, 20.f, 1.f, "");
+		configParam(LP_PARAM, 0.08311f, 1.f, 1.f, "Frequency");
+		configParam(HP_PARAM, 0.5f, 100, 1.f, "Resonance");
 		configInput(LEFT_INPUT, "");
 		configInput(RIGHT_INPUT, "");
 		configOutput(LEFT_OUTPUT, "");

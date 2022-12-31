@@ -5,7 +5,7 @@
 struct DelayStage4{
 private:
     float grain_sharpness = 4.0;    // [1.0; inf)
-    float grain_period = 0.01;      // s
+    float grain_period = 0.01;      // sec
     
     GrainClock clock;
     Delay2H lines[4];

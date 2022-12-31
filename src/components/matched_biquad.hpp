@@ -2,6 +2,9 @@
 Attempt at implementing some of the algorithms outlined in the paper titled
 "Matched second order digital filter" by Martin Vicanek
 https://www.vicanek.de/articles/BiquadFits.pdf
+Also utilizing the "complex one-pole" method described in
+"Fast Modulation of Filter Parameters" by Ammar Muqaddas
+http://www.solostuff.net/wp-content/uploads/2019/05/Fast-Modulation-of-Filter-Parameters-v1.1.1.pdf
 */
 
 #pragma once
@@ -9,50 +12,13 @@ https://www.vicanek.de/articles/BiquadFits.pdf
 #include "rack.hpp"
 #include "math.h"
 
-struct MatchedLowPass {
-    rack::dsp::IIRFilter<3, 3, float> biquad;
+namespace chipselect{
 
+struct LowPass {
     float T;
-    float FS;
-    float dfreq = 0.0;
-    float Q = 1.0;
+    float FSp2;
 
-    float a[3] = {1,0,0};
-    float b[3] = {1,0,0};
-
-    MatchedLowPass(float FS) : T(1/FS), FS(FS) {}
-
-    void setParams(float freq, float res)
-    {
-        dfreq = freq*T;
-        Q = res;
-        float q = 1/(2*Q);
-        float w0 = 2*M_PI*dfreq;
-        a[1] = -2*std::exp(-q*w0)*std::cos(w0*std::sqrt(1-q*q));
-        a[2] = std::exp(-2*q*w0);
-
-        float f02 = dfreq*dfreq;
-        float r0 = 1 + a[1] + a[2];
-        float r1 = f02*(1 - a[1] + a[2])/std::sqrt((1-f02)*(1-f02) + f02/(Q*Q));
-
-        b[0] = 0.5*(r0 + r1);
-        b[1] = r0 - b[0];
-        b[2] = 0;
-
-        biquad.setCoefficients(&b[0], &a[1]);
-    }
-
-    float process(float signal)
-    {
-        return biquad.process(signal);
-    }
-};
-
-struct MatchedComplexLowPass {
-    float T;
-    float FS;
     float b[3] = {};
-
     float alpha = 0;
     float beta = 0;
 
@@ -62,21 +28,23 @@ struct MatchedComplexLowPass {
     float re2[2] = {};
     float im2[2] = {};
 
-    MatchedComplexLowPass(float FS) : T(1/FS), FS(FS) {}
+    LowPass(float FS) : T(1/FS), FSp2(FS/2) {}
 
     void setParams(float freq, float Q)
     {
-        if(freq < 10) freq = 10;
-        if(freq > FS/2) freq = FS/2;
+        if(freq < 1) freq = 1;
+        if(freq > FSp2) freq = FSp2;
         if(Q < 0.5) Q = 0.5;
-        if(Q > 20) Q = 20;
+        //if(Q > 10e6) Q = 10e6;
 
         float dfreq = freq*T;
         float w = 2*M_PI*dfreq;
         float q = 1/(2*Q);
 
-        alpha = std::exp(-q*w)*std::cos(std::sqrt(1-q*q)*w);
-        beta = std::exp(-q*w)*std::sin(std::sqrt(1-q*q)*w);
+        float R = std::exp(-q*w);
+        float phi = std::sqrt(1-q*q)*w;
+        alpha = R*std::cos(phi);
+        beta = R*std::sin(phi);
 
         float a[3] = {1,0,0};
         a[1] = -2*alpha;
@@ -110,3 +78,5 @@ struct MatchedComplexLowPass {
         return re2[0];
     }
 };
+
+}
