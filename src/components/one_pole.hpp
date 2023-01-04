@@ -2,19 +2,34 @@
 
 #include "rack.hpp"
 
-struct OnePole4 {
-    simd::float_4 z = simd::float_4::zero();
-    simd::float_4 a = simd::float_4(1);
-    simd::float_4 b = simd::float_4::zero();
+namespace cs{
 
-    void setFrequency(simd::float_4 dfreq)
+template <typename T>
+struct OnePole {
+    T Ts;
+    T FSp2;
+
+    T z = T(0);
+    T a = T(1);
+    T b = T(0);
+
+    OnePole(float FS) : Ts(T(1/FS)), FSp2(T(FS/2)) {}
+
+    void setFrequency(T freq)
     {
-        b = simd::pow(simd::float_4(M_E), dfreq*simd::float_4(-2.0*M_PI));
-        a = simd::float_4(1)-b;
+        freq = simd::ifelse(freq <= 0, -freq, freq);
+        freq = simd::ifelse(freq >= FSp2, FSp2, freq);
+
+        T dfreq = freq*Ts;
+
+        b = simd::exp(dfreq*T(-2.0*M_PI));
+        a = T(1)-b;
     }
-    simd::float_4 process(simd::float_4 in)
+    T process(T in)
     {
         z = in*a + z*b;
         return z;
     }
 };
+
+}

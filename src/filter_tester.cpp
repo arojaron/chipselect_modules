@@ -23,14 +23,14 @@ struct FilterTester : Module {
 		LIGHTS_LEN
 	};
 
-	chipselect::LowPass filter;
+	cs::LowPass<float> filter;
 
 	FilterTester() 
-	: filter(chipselect::LowPass(48000))
+	: filter(cs::LowPass<float>(48000))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(LP_PARAM, 0.08311f, 1.f, 1.f, "Frequency");
-		configParam(HP_PARAM, 0.5f, 100, 1.f, "Resonance");
+		configParam(LP_PARAM, std::log2(10), std::log2(21000), std::log2(21000), "Frequency", "Hz", 2);
+		configParam(HP_PARAM, 0.8f, 4.6f, 1.f, "Resonance");
 		configInput(LEFT_INPUT, "");
 		configInput(RIGHT_INPUT, "");
 		configOutput(LEFT_OUTPUT, "");
@@ -40,10 +40,10 @@ struct FilterTester : Module {
 	void process(const ProcessArgs& args) override
 	{
 		float filter_param = params[LP_PARAM].getValue();
-		filter_param = 21000*filter_param*filter_param*filter_param*filter_param;
+		filter_param = dsp::approxExp2_taylor5(filter_param);
 		float filter_mod = 5000*0.1*inputs[RIGHT_INPUT].getVoltage();
 		float Q_param = params[HP_PARAM].getValue();
-		filter.setParams(filter_param + filter_mod, Q_param);
+		filter.setParams(filter_param + filter_mod, Q_param*Q_param*Q_param);
 
 		float in = inputs[LEFT_INPUT].getVoltage();
 		outputs[LEFT_OUTPUT].setVoltage(filter.process(in));

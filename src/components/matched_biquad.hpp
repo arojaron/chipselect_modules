@@ -1,6 +1,6 @@
 /*
-Attempt at implementing some of the algorithms outlined in the paper titled
-"Matched second order digital filter" by Martin Vicanek
+Attempt at implementing some of the algorithms in
+"Matched Second Order Digital Filter" by Martin Vicanek
 https://www.vicanek.de/articles/BiquadFits.pdf
 Also utilizing the "complex one-pole" method described in
 "Fast Modulation of Filter Parameters" by Ammar Muqaddas
@@ -10,56 +10,55 @@ http://www.solostuff.net/wp-content/uploads/2019/05/Fast-Modulation-of-Filter-Pa
 #pragma once
 
 #include "rack.hpp"
-#include "math.h"
 
-namespace chipselect{
+namespace cs{
 
+template <typename T>
 struct LowPass {
-    float T;
-    float FSp2;
+    T Ts;
+    T FSp2;
 
-    float b[3] = {};
-    float alpha = 0;
-    float beta = 0;
+    T b[3] = {};
+    T alpha = 0;
+    T beta = 0;
 
-    float x[3] = {};
-    float re1[2] = {};
-    float im1[2] = {};
-    float re2[2] = {};
-    float im2[2] = {};
+    T x[3] = {};
+    T re1[2] = {};
+    T im1[2] = {};
+    T re2[2] = {};
+    T im2[2] = {};
 
-    LowPass(float FS) : T(1/FS), FSp2(FS/2) {}
+    LowPass(float FS) : Ts(T(1/FS)), FSp2(T(FS/2)) {}
 
-    void setParams(float freq, float Q)
+    void setParams(T freq, T Q = T(0.5))
     {
-        if(freq < 1) freq = 1;
-        if(freq > FSp2) freq = FSp2;
-        if(Q < 0.5) Q = 0.5;
-        //if(Q > 10e6) Q = 10e6;
+        freq = simd::ifelse(freq <= 0, -freq, freq);
+        freq = simd::ifelse(freq >= FSp2, FSp2, freq);
+        Q = simd::ifelse(Q <= 0.5, 0.5, Q);
 
-        float dfreq = freq*T;
-        float w = 2*M_PI*dfreq;
-        float q = 1/(2*Q);
+        T dfreq = freq*Ts;
+        T w = T(2*M_PI)*dfreq;
+        T q = T(0.5)/(2*Q);
 
-        float R = std::exp(-q*w);
-        float phi = std::sqrt(1-q*q)*w;
-        alpha = R*std::cos(phi);
-        beta = R*std::sin(phi);
+        T R = simd::exp(-q*w);
+        T phi = simd::sqrt(1-q*q)*w;
+        alpha = R*simd::cos(phi);
+        beta = R*simd::sin(phi);
 
-        float a[3] = {1,0,0};
-        a[1] = -2*alpha;
+        T a[3] = {T(1),T(0),T(0)};
+        a[1] = T(-2)*alpha;
         a[2] = alpha*alpha + beta*beta;
 
-        float f02 = dfreq*dfreq;
-        float r0 = a[0] + a[1] + a[2];
-        float r1 = f02*(a[0] - a[1] + a[2])/std::sqrt((1-f02)*(1-f02) + f02/(Q*Q));
+        T f02 = dfreq*dfreq;
+        T r0 = a[0] + a[1] + a[2];
+        T r1 = f02*(a[0] - a[1] + a[2])/simd::sqrt((1-f02)*(1-f02) + f02/(Q*Q));
 
-        b[0] = 0.5*(r0 + r1);
+        b[0] = T(0.5)*(r0 + r1);
         b[1] = r0 - b[0];
-        b[2] = 0;
+        b[2] = T(0);
     }
 
-    float process(float signal)
+    T process(T signal)
     {        
         x[2] = x[1];
         x[1] = x[0];

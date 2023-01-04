@@ -2,6 +2,7 @@
 
 #include "components/diffusion_stage.hpp"
 #include "components/one_pole.hpp"
+#include "components/matched_biquad.hpp"
 
 extern simd::float_4 diff_lengths[];
 extern simd::float_4 mixer_normals[];
@@ -39,15 +40,17 @@ struct Reverb : Module {
 	DiffusionStage diffusion3;
 	DiffusionStage diffusion4;
 	DiffusionStage delay;
-	OnePole4 hp_filter;
-	OnePole4 lp_filter;
+	cs::OnePole<simd::float_4> hp_filter;
+	cs::OnePole<simd::float_4> lp_filter;
 
 	Reverb() 
 	: diffusion1(DiffusionStage(diff_lengths[0], mixer_normals[0], FS)),
 	  diffusion2(DiffusionStage(diff_lengths[1], mixer_normals[1], FS)),
 	  diffusion3(DiffusionStage(diff_lengths[2], mixer_normals[2], FS)),
 	  diffusion4(DiffusionStage(diff_lengths[3], mixer_normals[3], FS)),
-	  delay(DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS))
+	  delay(DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS)),
+	  hp_filter(cs::OnePole<simd::float_4>(FS)),
+	  lp_filter(cs::OnePole<simd::float_4>(FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(LENGTH_RATIO_C_PARAM, 0.f, 1.f, 0.f, "Length ratio C");
@@ -84,10 +87,10 @@ struct Reverb : Module {
 
 		float hp_param = params[HP_PARAM].getValue();
 		hp_param *= hp_param*hp_param*hp_param*hp_param;
-		hp_filter.setFrequency(hp_param);
+		hp_filter.setFrequency(0.5*FS*hp_param);
 		float lp_param = params[LP_PARAM].getValue();
 		lp_param *= lp_param*lp_param*lp_param*lp_param;
-		lp_filter.setFrequency(lp_param);
+		lp_filter.setFrequency(0.5*FS*lp_param);
 		v = v-hp_filter.process(v);
 		v = lp_filter.process(v);
 
@@ -121,6 +124,8 @@ struct Reverb : Module {
 		diffusion3 = DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
 		diffusion4 = DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
 	  	delay = DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS);
+		hp_filter = cs::OnePole<simd::float_4>(FS);
+		lp_filter = cs::OnePole<simd::float_4>(FS);
 	}
 };
 
