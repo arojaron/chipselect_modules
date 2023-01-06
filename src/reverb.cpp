@@ -57,7 +57,7 @@ struct Reverb : Module {
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.f, "Length main", "s");
 		configParam(LENGTH_RATIO_B_PARAM, 0.f, 1.f, 0.f, "Length ratio B");
 		configParam(LENGTH_RATIO_A_PARAM, 0.f, 1.f, 0.f, "Length ratio A");
-		configParam(HP_PARAM, 0.f, 1.f, 0.f, "High pass");
+		configParam(HP_PARAM, 0.1f, 1.f, 0.1f, "High pass");
 		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
@@ -87,9 +87,9 @@ struct Reverb : Module {
 
 		float hp_param = params[HP_PARAM].getValue();
 		hp_param *= hp_param*hp_param*hp_param*hp_param;
-		hp_filter.setFrequency(0.5*FS*hp_param);
 		float lp_param = params[LP_PARAM].getValue();
 		lp_param *= lp_param*lp_param*lp_param*lp_param;
+		hp_filter.setFrequency(0.5*FS*hp_param);
 		lp_filter.setFrequency(0.5*FS*lp_param);
 		v = v-hp_filter.process(v);
 		v = lp_filter.process(v);

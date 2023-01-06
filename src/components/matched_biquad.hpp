@@ -38,7 +38,7 @@ struct LowPass {
 
         T dfreq = freq*Ts;
         T w = T(2*M_PI)*dfreq;
-        T q = T(0.5)/(2*Q);
+        T q = T(0.5)/Q;
 
         T R = simd::exp(-q*w);
         T phi = simd::sqrt(1-q*q)*w;
