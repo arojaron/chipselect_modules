@@ -30,6 +30,12 @@
       "name": "FilterTester",
       "description": "",
       "tags": []
+    },
+    {
+      "slug": "LowPass",
+      "name": "LowPass",
+      "description": "",
+      "tags": []
     }
   ]
 }

@@ -14,9 +14,31 @@ http://www.solostuff.net/wp-content/uploads/2019/05/Fast-Modulation-of-Filter-Pa
 namespace cs{
 
 template <typename T>
+struct TwoPole {
+    T Ts;
+    T Flimit;
+
+    T dfreq = 0;
+    T b[3] = {};
+    T alpha = 0;
+    T beta = 0;
+
+    T x[3] = {};
+    T re1[2] = {};
+    T im1[2] = {};
+    T re2[2] = {};
+    T im2[2] = {};
+
+    TwoPole(float FS) : Ts(T(1/FS)), Flimit(T(FS*0.45)) {}
+
+    virtual T process(T signal);
+
+};
+
+template <typename T>
 struct LowPass {
     T Ts;
-    T FSp2;
+    T Flimit;
 
     T b[3] = {};
     T alpha = 0;
@@ -28,12 +50,12 @@ struct LowPass {
     T re2[2] = {};
     T im2[2] = {};
 
-    LowPass(float FS) : Ts(T(1/FS)), FSp2(T(FS/2)) {}
+    LowPass(float FS) : Ts(T(1/FS)), Flimit(T(FS*0.45)) {}
 
     void setParams(T freq, T Q = T(0.5))
     {
         freq = simd::ifelse(freq <= 0, -freq, freq);
-        freq = simd::ifelse(freq >= FSp2, FSp2, freq);
+        freq = simd::ifelse(freq >= Flimit, Flimit, freq);
         Q = simd::ifelse(Q <= 0.5, 0.5, Q);
 
         T dfreq = freq*Ts;
