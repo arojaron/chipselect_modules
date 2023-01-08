@@ -3,6 +3,8 @@
 #include "rack.hpp"
 #include <vector>
 
+namespace cs{
+
 struct Delay2H{
 private:
     std::vector<float> buffer;
@@ -89,3 +91,5 @@ public:
         return false;
     }
 };
+
+}

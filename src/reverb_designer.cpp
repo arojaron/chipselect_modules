@@ -78,20 +78,20 @@ struct ReverbDesigner : Module {
 	};
 
 	float FS = 48000.0;
-	DiffusionStage stage1;
-	DiffusionStage stage2;
-	DiffusionStage stage3;
-	DiffusionStage stage4;
-	DiffusionStage stage5;
+	cs::DiffusionStage stage1;
+	cs::DiffusionStage stage2;
+	cs::DiffusionStage stage3;
+	cs::DiffusionStage stage4;
+	cs::DiffusionStage stage5;
 	int parts[5] = {};
 	bool gen = false;
 
 	ReverbDesigner() 
-	: stage1(DiffusionStage(init_lengths, init_normal, FS)),
-	  stage2(DiffusionStage(init_lengths, init_normal, FS)),
-	  stage3(DiffusionStage(init_lengths, init_normal, FS)),
-	  stage4(DiffusionStage(init_lengths, init_normal, FS)),
-	  stage5(DiffusionStage(init_lengths, init_normal, FS))
+	: stage1(cs::DiffusionStage(init_lengths, init_normal, FS)),
+	  stage2(cs::DiffusionStage(init_lengths, init_normal, FS)),
+	  stage3(cs::DiffusionStage(init_lengths, init_normal, FS)),
+	  stage4(cs::DiffusionStage(init_lengths, init_normal, FS)),
+	  stage5(cs::DiffusionStage(init_lengths, init_normal, FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(DEL11_PARAM, 0.f, 1.f, 0.f, "");
@@ -180,11 +180,11 @@ struct ReverbDesigner : Module {
 			simd::float_4 normals3 = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
 			simd::float_4 normals4 = simd::float_4(params[MIX41_PARAM].getValue(), params[MIX42_PARAM].getValue(), params[MIX43_PARAM].getValue(), params[MIX44_PARAM].getValue());
 			simd::float_4 normals5 = simd::float_4(params[MIX51_PARAM].getValue(), params[MIX52_PARAM].getValue(), params[MIX53_PARAM].getValue(), params[MIX54_PARAM].getValue());
-			stage1 = DiffusionStage(lengths1, normals1, FS);
-			stage2 = DiffusionStage(lengths2, normals2, FS);
-			stage3 = DiffusionStage(lengths3, normals3, FS);
-			stage4 = DiffusionStage(lengths4, normals4, FS);
-			stage5 = DiffusionStage(lengths5, normals5, FS);
+			stage1 = cs::DiffusionStage(lengths1, normals1, FS);
+			stage2 = cs::DiffusionStage(lengths2, normals2, FS);
+			stage3 = cs::DiffusionStage(lengths3, normals3, FS);
+			stage4 = cs::DiffusionStage(lengths4, normals4, FS);
+			stage5 = cs::DiffusionStage(lengths5, normals5, FS);
 			gen = false;
 		}
 

@@ -2,6 +2,8 @@
 
 #include "rack.hpp"
 
+namespace cs{
+
 struct MatrixMixer4{
 private:
     simd::float_4 rows[4];
@@ -40,3 +42,5 @@ public:
         return ret;
     }
 };
+
+}

@@ -3,6 +3,7 @@
 #include "components/diffusion_stage.hpp"
 #include "components/one_pole.hpp"
 #include "components/matched_biquad.hpp"
+#include "components/transient_detection.hpp"
 
 extern simd::float_4 diff_lengths[];
 extern simd::float_4 mixer_normals[];
@@ -17,7 +18,9 @@ struct Reverb : Module {
 		LP_PARAM,
 		DIFF_PARAM,
 		DIFF_MODE_PARAM,
+		DRYWET_PARAM,
 		FEEDBACK_PARAM,
+		DUCKING_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
@@ -31,24 +34,27 @@ struct Reverb : Module {
 		OUTPUTS_LEN
 	};
 	enum LightId {
+		DUCKING_LIGHT,
 		LIGHTS_LEN
 	};
 
 	float FS = 48000.0;
-	DiffusionStage diffusion1;
-	DiffusionStage diffusion2;
-	DiffusionStage diffusion3;
-	DiffusionStage diffusion4;
-	DiffusionStage delay;
+	cs::DiffusionStage diffusion1;
+	cs::DiffusionStage diffusion2;
+	cs::DiffusionStage diffusion3;
+	cs::DiffusionStage diffusion4;
+	cs::DiffusionStage delay;
 	cs::OnePole<simd::float_4> hp_filter;
 	cs::OnePole<simd::float_4> lp_filter;
 
+	cs::Ducking duck;
+
 	Reverb() 
-	: diffusion1(DiffusionStage(diff_lengths[0], mixer_normals[0], FS)),
-	  diffusion2(DiffusionStage(diff_lengths[1], mixer_normals[1], FS)),
-	  diffusion3(DiffusionStage(diff_lengths[2], mixer_normals[2], FS)),
-	  diffusion4(DiffusionStage(diff_lengths[3], mixer_normals[3], FS)),
-	  delay(DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS)),
+	: diffusion1(cs::DiffusionStage(diff_lengths[0], mixer_normals[0], FS)),
+	  diffusion2(cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS)),
+	  diffusion3(cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS)),
+	  diffusion4(cs::DiffusionStage(diff_lengths[3], mixer_normals[3], FS)),
+	  delay(cs::DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS)),
 	  hp_filter(cs::OnePole<simd::float_4>(FS)),
 	  lp_filter(cs::OnePole<simd::float_4>(FS))
 	{
@@ -61,7 +67,9 @@ struct Reverb : Module {
 		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
+		configParam(DRYWET_PARAM, 0.f, 1.f, 1.f, "Dry-Wet");
 		configParam(FEEDBACK_PARAM, 0.f, 1.f, 0.f, "Feedback");
+		configParam(DUCKING_PARAM, 0.f, 1.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
 		configOutput(LEFT_OUTPUT, "Left");
@@ -81,6 +89,11 @@ struct Reverb : Module {
 
 		float left = inputs[LEFT_INPUT].getVoltage();
 		float right = inputs[RIGHT_INPUT].isConnected() ? inputs[RIGHT_INPUT].getVoltage() : left;
+
+		duck.setScaling(params[DUCKING_PARAM].getValue());
+		float ducking_depth = duck.process(0.5*(left + right));
+		lights[DUCKING_LIGHT].setBrightness(ducking_depth);
+
 		simd::float_4 v = simd::float_4(left, right, left, right);
 
 		float hp_param = dsp::quintic(params[HP_PARAM].getValue());
@@ -97,8 +110,9 @@ struct Reverb : Module {
 		v = diffusion3.process(v);
 		v = diffusion4.process(v);
 
-		outputs[LEFT_OUTPUT].setVoltage(v[0]);
-		outputs[RIGHT_OUTPUT].setVoltage(v[1]);
+		float drywet = params[DRYWET_PARAM].getValue();
+		outputs[LEFT_OUTPUT].setVoltage(drywet*v[0] + (1-drywet)*left);
+		outputs[RIGHT_OUTPUT].setVoltage(drywet*v[1] + (1-drywet)*right);
 
 		float delay0 = params[LENGTH_PARAM].getValue();
 		float delayA = delay0 * params[LENGTH_RATIO_A_PARAM].getValue();
@@ -111,17 +125,18 @@ struct Reverb : Module {
 		v = delay.process(v);
 
 		float feedback = params[FEEDBACK_PARAM].getValue();
+		feedback = (1-ducking_depth)*feedback;
 		back_fed = v * simd::float_4(feedback);
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
 		FS = e.sampleRate;
-		diffusion1 = DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
-		diffusion2 = DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
-		diffusion3 = DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
-		diffusion4 = DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
-	  	delay = DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS);
+		diffusion1 = cs::DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
+		diffusion2 = cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
+		diffusion3 = cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
+		diffusion4 = cs::DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
+	  	delay = cs::DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
 		lp_filter = cs::OnePole<simd::float_4>(FS);
 	}
@@ -136,21 +151,25 @@ struct ReverbWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/reverb.svg")));
 
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 12.552)), module, Reverb::LENGTH_RATIO_A_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(21.406, 22.187)), module, Reverb::LENGTH_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(45.822, 22.187)), module, Reverb::LENGTH_RATIO_B_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 31.822)), module, Reverb::LENGTH_RATIO_C_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(22.435, 50.14)), module, Reverb::HP_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.525, 50.14)), module, Reverb::LP_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(20.09, 72.486)), module, Reverb::DIFF_PARAM));
-		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(43.229, 72.486)), module, Reverb::DIFF_MODE_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(30.48, 93.356)), module, Reverb::FEEDBACK_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 9.439)), module, Reverb::LENGTH_RATIO_A_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(21.406, 19.074)), module, Reverb::LENGTH_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(45.822, 19.074)), module, Reverb::LENGTH_RATIO_B_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 28.709)), module, Reverb::LENGTH_RATIO_C_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(22.435, 42.996)), module, Reverb::HP_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.525, 42.996)), module, Reverb::LP_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(16.65, 63.551)), module, Reverb::DIFF_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(39.789, 63.551)), module, Reverb::DIFF_MODE_PARAM));
+		addParam(createParamCentered<Davies1900hRedKnob>(mm2px(Vec(14.023, 86.519)), module, Reverb::DRYWET_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(45.145, 93.386)), module, Reverb::FEEDBACK_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.89, 98.739)), module, Reverb::DUCKING_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.336, 118.019)), module, Reverb::LEFT_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.691, 118.019)), module, Reverb::RIGHT_INPUT));
 
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(41.269, 118.023)), module, Reverb::LEFT_OUTPUT));
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.624, 118.019)), module, Reverb::RIGHT_OUTPUT));
+
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(31.423, 90.619)), module, Reverb::DUCKING_LIGHT));
 	}
 };
 

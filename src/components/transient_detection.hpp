@@ -2,6 +2,8 @@
 
 #include "rack.hpp"
 
+namespace cs{
+
 float sigmoid(float signal)
 {
     if(signal > 1.0){
@@ -20,7 +22,7 @@ struct Ducking{
 
     Ducking()
     {
-        slew_limiter.setRiseFall(10, 0.0001);
+        slew_limiter.setRiseFall(1, 0.001);
     }
     void setScaling(float scale)
     {
@@ -31,3 +33,5 @@ struct Ducking{
         return sigmoid(slew_limiter.process(scaling*signal*signal));
     }
 };
+
+}
