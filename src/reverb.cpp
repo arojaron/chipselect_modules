@@ -10,10 +10,7 @@ extern simd::float_4 mixer_normals[];
 
 struct Reverb : Module {
 	enum ParamId {
-		LENGTH_RATIO_A_PARAM,
 		LENGTH_PARAM,
-		LENGTH_RATIO_B_PARAM,
-		LENGTH_RATIO_C_PARAM,
 		HP_PARAM,
 		LP_PARAM,
 		DIFF_PARAM,
@@ -54,15 +51,12 @@ struct Reverb : Module {
 	  diffusion2(cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS)),
 	  diffusion3(cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS)),
 	  diffusion4(cs::DiffusionStage(diff_lengths[3], mixer_normals[3], FS)),
-	  delay(cs::DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS)),
+	  delay(cs::DiffusionStage(diff_lengths[4], mixer_normals[4], FS)),
 	  hp_filter(cs::OnePole<simd::float_4>(FS)),
 	  lp_filter(cs::OnePole<simd::float_4>(FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(LENGTH_RATIO_C_PARAM, 0.f, 1.f, 0.f, "Length ratio C");
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.f, "Length main", "s");
-		configParam(LENGTH_RATIO_B_PARAM, 0.f, 1.f, 0.f, "Length ratio B");
-		configParam(LENGTH_RATIO_A_PARAM, 0.f, 1.f, 0.f, "Length ratio A");
 		configParam(HP_PARAM, 0.f, 1.f, 0.f, "High pass");
 		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
@@ -115,12 +109,7 @@ struct Reverb : Module {
 		outputs[RIGHT_OUTPUT].setVoltage(drywet*v[1] + (1-drywet)*right);
 
 		float delay0 = params[LENGTH_PARAM].getValue();
-		float delayA = delay0 * params[LENGTH_RATIO_A_PARAM].getValue();
-		float delayB = delay0 * params[LENGTH_RATIO_B_PARAM].getValue();
-		float delayC = delay0 * params[LENGTH_RATIO_C_PARAM].getValue();
-		simd::float_4 delay_param = simd::float_4(delayA, delayB, delayC, delay0);
-		delay_param = dsp::cubic(delay_param);
-		delay.setScale(delay_param);
+		delay.setScale(dsp::cubic(delay0));
 
 		v = delay.process(v);
 
@@ -136,7 +125,7 @@ struct Reverb : Module {
 		diffusion2 = cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
 		diffusion3 = cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
 		diffusion4 = cs::DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
-	  	delay = cs::DiffusionStage(simd::float_4(1,1,1,1), mixer_normals[1], FS);
+	  	delay = cs::DiffusionStage(diff_lengths[4], mixer_normals[4], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
 		lp_filter = cs::OnePole<simd::float_4>(FS);
 	}
@@ -154,10 +143,7 @@ struct ReverbWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/reverb.svg")));
 
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 9.439)), module, Reverb::LENGTH_RATIO_A_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(21.406, 19.074)), module, Reverb::LENGTH_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(45.822, 19.074)), module, Reverb::LENGTH_RATIO_B_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.854, 28.709)), module, Reverb::LENGTH_RATIO_C_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(22.435, 42.996)), module, Reverb::HP_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.525, 42.996)), module, Reverb::LP_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(16.65, 63.551)), module, Reverb::DIFF_PARAM));
