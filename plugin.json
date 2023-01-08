@@ -14,20 +14,14 @@
   "changelogUrl": "",
   "modules": [
     {
-      "slug": "reverb",
-      "name": "reverb",
+      "slug": "Reverb",
+      "name": "Reverb",
       "description": "",
       "tags": []
     },
     {
-      "slug": "reverbDesigner",
-      "name": "reverbDesigner",
-      "description": "",
-      "tags": []
-    },
-    {
-      "slug": "FilterTester",
-      "name": "FilterTester",
+      "slug": "ReverbDesigner",
+      "name": "ReverbDesigner",
       "description": "",
       "tags": []
     },

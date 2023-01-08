@@ -10,5 +10,4 @@ extern Plugin* pluginInstance;
 // Declare each Model, defined in each module source file
 extern Model* modelReverb;
 extern Model* modelReverbDesigner;
-extern Model* modelFilterTester;
 extern Model* modelLowPass;

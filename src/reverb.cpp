@@ -90,7 +90,7 @@ struct Reverb : Module {
 		float left = inputs[LEFT_INPUT].getVoltage();
 		float right = inputs[RIGHT_INPUT].isConnected() ? inputs[RIGHT_INPUT].getVoltage() : left;
 
-		duck.setScaling(params[DUCKING_PARAM].getValue());
+		duck.setScaling(dsp::cubic(params[DUCKING_PARAM].getValue()));
 		float ducking_depth = duck.process(0.5*(left + right));
 		lights[DUCKING_LIGHT].setBrightness(ducking_depth);
 
@@ -143,7 +143,10 @@ struct Reverb : Module {
 };
 
 struct DiffModeButton : VCVButton{
-
+	void onDragStart(const DragStartEvent& e) override
+	{
+		VCVButton::onDragStart(e);
+	}
 };
 
 struct ReverbWidget : ModuleWidget {
@@ -158,7 +161,7 @@ struct ReverbWidget : ModuleWidget {
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(22.435, 42.996)), module, Reverb::HP_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.525, 42.996)), module, Reverb::LP_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(16.65, 63.551)), module, Reverb::DIFF_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(39.789, 63.551)), module, Reverb::DIFF_MODE_PARAM));
+		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(39.789, 63.551)), module, Reverb::DIFF_MODE_PARAM));
 		addParam(createParamCentered<Davies1900hRedKnob>(mm2px(Vec(14.023, 86.519)), module, Reverb::DRYWET_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(45.145, 93.386)), module, Reverb::FEEDBACK_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.89, 98.739)), module, Reverb::DUCKING_PARAM));
@@ -174,4 +177,4 @@ struct ReverbWidget : ModuleWidget {
 };
 
 
-Model* modelReverb = createModel<Reverb, ReverbWidget>("reverb");
+Model* modelReverb = createModel<Reverb, ReverbWidget>("Reverb");
