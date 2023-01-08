@@ -23,10 +23,10 @@ struct FilterTester : Module {
 		LIGHTS_LEN
 	};
 
-	cs::LowPass<float> filter;
+	cs::HighPass<float> filter;
 
 	FilterTester() 
-	: filter(cs::LowPass<float>(48000))
+	: filter(cs::HighPass<float>(48000))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(LP_PARAM, std::log2(10), std::log2(21000), std::log2(21000), "Frequency", "Hz", 2);
