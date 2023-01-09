@@ -236,9 +236,6 @@ struct ReverbDesigner : Module {
 		json_array_append(lengths_arr_j, lengths4_arr_j);
 		json_array_append(lengths_arr_j, lengths5_arr_j);
 
-		json_t* lengths_j = json_object();
-		json_object_set(lengths_j, "lengths", lengths_arr_j);
-
 		json_t* mixer1_arr_j = json_array();
 		json_array_append_new(mixer1_arr_j, json_real(normals1[0]));
 		json_array_append_new(mixer1_arr_j, json_real(normals1[1]));
@@ -276,14 +273,14 @@ struct ReverbDesigner : Module {
 		json_array_append(mixer_arr_j, mixer4_arr_j);
 		json_array_append(mixer_arr_j, mixer5_arr_j);
 
-		json_t* mixer_j = json_object();
-		json_object_set(mixer_j, "mixer_normals", mixer_arr_j);
+		json_t* params_j = json_object();
+		json_object_set(params_j, "lengths", lengths_arr_j);
+		json_object_set(params_j, "mixer_normals", mixer_arr_j);
 
 		std::string params_filename = asset::user("chipselect.json");
 		FILE *file = fopen(params_filename.c_str(), "w");
 		if (file) {
-			json_dumpf(lengths_j, file, JSON_INDENT(2) | JSON_REAL_PRECISION(9));
-			json_dumpf(mixer_j, file, JSON_INDENT(2) | JSON_REAL_PRECISION(9));
+			json_dumpf(params_j, file, JSON_INDENT(2) | JSON_REAL_PRECISION(9));
 			fclose(file);
 		}
 		json_decref(lengths1_arr_j);
@@ -292,14 +289,13 @@ struct ReverbDesigner : Module {
 		json_decref(lengths4_arr_j);
 		json_decref(lengths5_arr_j);
 		json_decref(lengths_arr_j);
-		json_decref(lengths_j);
 		json_decref(mixer1_arr_j);
 		json_decref(mixer2_arr_j);
 		json_decref(mixer3_arr_j);
 		json_decref(mixer4_arr_j);
 		json_decref(mixer5_arr_j);
 		json_decref(mixer_arr_j);
-		json_decref(mixer_j);
+		json_decref(params_j);
 	}
 
 	void process(const ProcessArgs& args) override
@@ -330,10 +326,11 @@ struct ReverbDesigner : Module {
 		v = stage2.process(v);
 		v = stage3.process(v);
 		v = stage4.process(v);
-		v = stage5.process(v);
-
+		
 		outputs[LEFT_OUTPUT].setVoltage(v[0]);
 		outputs[RIGHT_OUTPUT].setVoltage(v[1]);
+
+		v = stage5.process(v);
 
 		float feedback = params[FEEDBACK_PARAM].getValue();
 		back_fed = simd::float_4(feedback)*v;

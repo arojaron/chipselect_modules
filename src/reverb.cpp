@@ -121,6 +121,11 @@ struct Reverb : Module {
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
 		FS = e.sampleRate;
+		reloadProcessors();
+	}
+
+	void reloadProcessors(void)
+	{
 		diffusion1 = cs::DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
 		diffusion2 = cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
 		diffusion3 = cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
@@ -135,6 +140,41 @@ struct DiffModeButton : VCVButton{
 	void onDragStart(const DragStartEvent& e) override
 	{
 		VCVButton::onDragStart(e);
+
+		// load from json
+		std::string params_filename = asset::user("chipselect2.json");
+		FILE* file = fopen(params_filename.c_str(), "r");
+		json_error_t err;
+		json_t* params_j = json_loadf(file, 0, &err);
+
+		if(params_j){
+			json_t* lengths_j = json_object_get(params_j, "lengths");
+			for(int i = 0; i < 5; i++){
+				json_t* lengths_i_j = json_array_get(lengths_j, i);
+				diff_lengths[i] = simd::float_4(
+				json_real_value(json_array_get(lengths_i_j, 0)), 
+				json_real_value(json_array_get(lengths_i_j, 1)), 
+				json_real_value(json_array_get(lengths_i_j, 2)), 
+				json_real_value(json_array_get(lengths_i_j, 3)));
+				json_decref(lengths_i_j);
+			}
+			json_decref(lengths_j);
+
+			json_t* normals_j = json_object_get(params_j, "mixer_normals");
+			for(int i = 0; i < 5; i++){
+				json_t* normals_i_j = json_array_get(normals_j, i);
+				mixer_normals[i] = simd::float_4(
+				json_real_value(json_array_get(normals_i_j, 0)), 
+				json_real_value(json_array_get(normals_i_j, 1)), 
+				json_real_value(json_array_get(normals_i_j, 2)), 
+				json_real_value(json_array_get(normals_i_j, 3)));
+				json_decref(normals_i_j);
+			}
+			json_decref(normals_j);
+			json_decref(params_j);
+		}
+
+		((Reverb*)this->module)->reloadProcessors();
 	}
 };
 
