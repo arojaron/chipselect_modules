@@ -78,16 +78,8 @@ struct ReverbDesigner : Module {
 		LIGHTS_LEN
 	};
 
-	simd::float_4 lengths1 = init_lengths;
-	simd::float_4 lengths2 = init_lengths;
-	simd::float_4 lengths3 = init_lengths;
-	simd::float_4 lengths4 = init_lengths;
-	simd::float_4 lengths5 = init_lengths;
-	simd::float_4 normals1 = init_normal;
-	simd::float_4 normals2 = init_normal;
-	simd::float_4 normals3 = init_normal;
-	simd::float_4 normals4 = init_normal;
-	simd::float_4 normals5 = init_normal;
+	simd::float_4 lengths[5] = {init_lengths};
+	simd::float_4 normals[5] = {init_normal};
 
 	float FS = 48000.0;
 	cs::DiffusionStage stage1;
@@ -174,126 +166,77 @@ struct ReverbDesigner : Module {
 
 	void genReverb(void)
 	{
-		lengths1 = simd::float_4(params[DEL11_PARAM].getValue(), params[DEL12_PARAM].getValue(), params[DEL13_PARAM].getValue(), params[DEL14_PARAM].getValue());
-		lengths2 = simd::float_4(params[DEL21_PARAM].getValue(), params[DEL22_PARAM].getValue(), params[DEL23_PARAM].getValue(), params[DEL24_PARAM].getValue());
-		lengths3 = simd::float_4(params[DEL31_PARAM].getValue(), params[DEL32_PARAM].getValue(), params[DEL33_PARAM].getValue(), params[DEL34_PARAM].getValue());
-		lengths4 = simd::float_4(params[DEL41_PARAM].getValue(), params[DEL42_PARAM].getValue(), params[DEL43_PARAM].getValue(), params[DEL44_PARAM].getValue());
-		lengths5 = simd::float_4(params[DEL51_PARAM].getValue(), params[DEL52_PARAM].getValue(), params[DEL53_PARAM].getValue(), params[DEL54_PARAM].getValue());
-		lengths1 = lengths1 * simd::float_4(params[SCALE1_PARAM].getValue());
-		lengths2 = lengths2 * simd::float_4(params[SCALE2_PARAM].getValue());
-		lengths3 = lengths3 * simd::float_4(params[SCALE3_PARAM].getValue());
-		lengths4 = lengths4 * simd::float_4(params[SCALE4_PARAM].getValue());
-		lengths5 = lengths5 * simd::float_4(params[SCALE5_PARAM].getValue());
+		lengths[0] = simd::float_4(params[DEL11_PARAM].getValue(), params[DEL12_PARAM].getValue(), params[DEL13_PARAM].getValue(), params[DEL14_PARAM].getValue());
+		lengths[1] = simd::float_4(params[DEL21_PARAM].getValue(), params[DEL22_PARAM].getValue(), params[DEL23_PARAM].getValue(), params[DEL24_PARAM].getValue());
+		lengths[2] = simd::float_4(params[DEL31_PARAM].getValue(), params[DEL32_PARAM].getValue(), params[DEL33_PARAM].getValue(), params[DEL34_PARAM].getValue());
+		lengths[3] = simd::float_4(params[DEL41_PARAM].getValue(), params[DEL42_PARAM].getValue(), params[DEL43_PARAM].getValue(), params[DEL44_PARAM].getValue());
+		lengths[4] = simd::float_4(params[DEL51_PARAM].getValue(), params[DEL52_PARAM].getValue(), params[DEL53_PARAM].getValue(), params[DEL54_PARAM].getValue());
+		lengths[0] *= simd::float_4(params[SCALE1_PARAM].getValue());
+		lengths[1] *= simd::float_4(params[SCALE2_PARAM].getValue());
+		lengths[2] *= simd::float_4(params[SCALE3_PARAM].getValue());
+		lengths[3] *= simd::float_4(params[SCALE4_PARAM].getValue());
+		lengths[4] *= simd::float_4(params[SCALE5_PARAM].getValue());
 		
-		normals1 = simd::float_4(params[MIX11_PARAM].getValue(), params[MIX12_PARAM].getValue(), params[MIX13_PARAM].getValue(), params[MIX14_PARAM].getValue());
-		normals2 = simd::float_4(params[MIX21_PARAM].getValue(), params[MIX22_PARAM].getValue(), params[MIX23_PARAM].getValue(), params[MIX24_PARAM].getValue());
-		normals3 = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
-		normals4 = simd::float_4(params[MIX41_PARAM].getValue(), params[MIX42_PARAM].getValue(), params[MIX43_PARAM].getValue(), params[MIX44_PARAM].getValue());
-		normals5 = simd::float_4(params[MIX51_PARAM].getValue(), params[MIX52_PARAM].getValue(), params[MIX53_PARAM].getValue(), params[MIX54_PARAM].getValue());
-		stage1 = cs::DiffusionStage(lengths1, normals1, FS);
-		stage2 = cs::DiffusionStage(lengths2, normals2, FS);
-		stage3 = cs::DiffusionStage(lengths3, normals3, FS);
-		stage4 = cs::DiffusionStage(lengths4, normals4, FS);
-		stage5 = cs::DiffusionStage(lengths5, normals5, FS);
+		normals[0] = simd::float_4(params[MIX11_PARAM].getValue(), params[MIX12_PARAM].getValue(), params[MIX13_PARAM].getValue(), params[MIX14_PARAM].getValue());
+		normals[1] = simd::float_4(params[MIX21_PARAM].getValue(), params[MIX22_PARAM].getValue(), params[MIX23_PARAM].getValue(), params[MIX24_PARAM].getValue());
+		normals[2] = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
+		normals[3] = simd::float_4(params[MIX41_PARAM].getValue(), params[MIX42_PARAM].getValue(), params[MIX43_PARAM].getValue(), params[MIX44_PARAM].getValue());
+		normals[4] = simd::float_4(params[MIX51_PARAM].getValue(), params[MIX52_PARAM].getValue(), params[MIX53_PARAM].getValue(), params[MIX54_PARAM].getValue());
+		stage1 = cs::DiffusionStage(lengths[0], normals[0], FS);
+		stage2 = cs::DiffusionStage(lengths[1], normals[1], FS);
+		stage3 = cs::DiffusionStage(lengths[2], normals[2], FS);
+		stage4 = cs::DiffusionStage(lengths[3], normals[3], FS);
+		stage5 = cs::DiffusionStage(lengths[4], normals[4], FS);
 	}
 
 	void storeReverb(void)
 	{
-		json_t* lengths1_arr_j = json_array();
-		json_array_append_new(lengths1_arr_j, json_real(lengths1[0]));
-		json_array_append_new(lengths1_arr_j, json_real(lengths1[1]));
-		json_array_append_new(lengths1_arr_j, json_real(lengths1[2]));
-		json_array_append_new(lengths1_arr_j, json_real(lengths1[3]));
-
-		json_t* lengths2_arr_j = json_array();
-		json_array_append_new(lengths2_arr_j, json_real(lengths2[0]));
-		json_array_append_new(lengths2_arr_j, json_real(lengths2[1]));
-		json_array_append_new(lengths2_arr_j, json_real(lengths2[2]));
-		json_array_append_new(lengths2_arr_j, json_real(lengths2[3]));
-
-		json_t* lengths3_arr_j = json_array();
-		json_array_append_new(lengths3_arr_j, json_real(lengths3[0]));
-		json_array_append_new(lengths3_arr_j, json_real(lengths3[1]));
-		json_array_append_new(lengths3_arr_j, json_real(lengths3[2]));
-		json_array_append_new(lengths3_arr_j, json_real(lengths3[3]));
-
-		json_t* lengths4_arr_j = json_array();
-		json_array_append_new(lengths4_arr_j, json_real(lengths4[0]));
-		json_array_append_new(lengths4_arr_j, json_real(lengths4[1]));
-		json_array_append_new(lengths4_arr_j, json_real(lengths4[2]));
-		json_array_append_new(lengths4_arr_j, json_real(lengths4[3]));
-
-		json_t* lengths5_arr_j = json_array();
-		json_array_append_new(lengths5_arr_j, json_real(lengths5[0]));
-		json_array_append_new(lengths5_arr_j, json_real(lengths5[1]));
-		json_array_append_new(lengths5_arr_j, json_real(lengths5[2]));
-		json_array_append_new(lengths5_arr_j, json_real(lengths5[3]));
-		
 		json_t* lengths_arr_j = json_array();
-		json_array_append(lengths_arr_j, lengths1_arr_j);
-		json_array_append(lengths_arr_j, lengths2_arr_j);
-		json_array_append(lengths_arr_j, lengths3_arr_j);
-		json_array_append(lengths_arr_j, lengths4_arr_j);
-		json_array_append(lengths_arr_j, lengths5_arr_j);
-
-		json_t* mixer1_arr_j = json_array();
-		json_array_append_new(mixer1_arr_j, json_real(normals1[0]));
-		json_array_append_new(mixer1_arr_j, json_real(normals1[1]));
-		json_array_append_new(mixer1_arr_j, json_real(normals1[2]));
-		json_array_append_new(mixer1_arr_j, json_real(normals1[3]));
-
-		json_t* mixer2_arr_j = json_array();
-		json_array_append_new(mixer2_arr_j, json_real(normals2[0]));
-		json_array_append_new(mixer2_arr_j, json_real(normals2[1]));
-		json_array_append_new(mixer2_arr_j, json_real(normals2[2]));
-		json_array_append_new(mixer2_arr_j, json_real(normals2[3]));
-
-		json_t* mixer3_arr_j = json_array();
-		json_array_append_new(mixer3_arr_j, json_real(normals3[0]));
-		json_array_append_new(mixer3_arr_j, json_real(normals3[1]));
-		json_array_append_new(mixer3_arr_j, json_real(normals3[2]));
-		json_array_append_new(mixer3_arr_j, json_real(normals3[3]));
-
-		json_t* mixer4_arr_j = json_array();
-		json_array_append_new(mixer4_arr_j, json_real(normals4[0]));
-		json_array_append_new(mixer4_arr_j, json_real(normals4[1]));
-		json_array_append_new(mixer4_arr_j, json_real(normals4[2]));
-		json_array_append_new(mixer4_arr_j, json_real(normals4[3]));
-
-		json_t* mixer5_arr_j = json_array();
-		json_array_append_new(mixer5_arr_j, json_real(normals5[0]));
-		json_array_append_new(mixer5_arr_j, json_real(normals5[1]));
-		json_array_append_new(mixer5_arr_j, json_real(normals5[2]));
-		json_array_append_new(mixer5_arr_j, json_real(normals5[3]));
+		for(int i = 0; i < 5; i++){
+			json_t* lengths_i_arr_j = json_array();
+			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][0]));
+			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][1]));
+			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][2]));
+			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][3]));
+			json_array_append(lengths_arr_j, lengths_i_arr_j);
+			json_decref(lengths_i_arr_j);
+		}
 
 		json_t* mixer_arr_j = json_array();
-		json_array_append(mixer_arr_j, mixer1_arr_j);
-		json_array_append(mixer_arr_j, mixer2_arr_j);
-		json_array_append(mixer_arr_j, mixer3_arr_j);
-		json_array_append(mixer_arr_j, mixer4_arr_j);
-		json_array_append(mixer_arr_j, mixer5_arr_j);
+		for(int i = 0; i < 5; i++){
+			json_t* mixer_i_arr_j = json_array();
+			json_array_append_new(mixer_i_arr_j, json_real(normals[i][0]));
+			json_array_append_new(mixer_i_arr_j, json_real(normals[i][1]));
+			json_array_append_new(mixer_i_arr_j, json_real(normals[i][2]));
+			json_array_append_new(mixer_i_arr_j, json_real(normals[i][3]));
+			json_array_append(mixer_arr_j, mixer_i_arr_j);
+			json_decref(mixer_i_arr_j);
+		}
 
 		json_t* params_j = json_object();
 		json_object_set(params_j, "lengths", lengths_arr_j);
 		json_object_set(params_j, "mixer_normals", mixer_arr_j);
 
-		std::string params_filename = asset::user("chipselect.json");
-		FILE *file = fopen(params_filename.c_str(), "w");
-		if (file) {
-			json_dumpf(params_j, file, JSON_INDENT(2) | JSON_REAL_PRECISION(9));
+		std::string params_filename = asset::user("chipselect_reverb_constants.json");
+		FILE* file = fopen(params_filename.c_str(), "r");
+		if(file){
+			json_error_t err;
+			json_t* file_j = json_loadf(file, 0, &err);
+			size_t models_length = json_array_size(file_j);
+			if(models_length){
+				json_array_append(file_j, params_j);
+			}
+			else{
+				json_decref(file_j);
+				file_j = json_array();
+				json_array_append(file_j, params_j);
+			}
+			fclose(file);
+			file = fopen(params_filename.c_str(), "w");
+			json_dumpf(file_j, file, JSON_INDENT(2) | JSON_REAL_PRECISION(9));
 			fclose(file);
 		}
-		json_decref(lengths1_arr_j);
-		json_decref(lengths2_arr_j);
-		json_decref(lengths3_arr_j);
-		json_decref(lengths4_arr_j);
-		json_decref(lengths5_arr_j);
 		json_decref(lengths_arr_j);
-		json_decref(mixer1_arr_j);
-		json_decref(mixer2_arr_j);
-		json_decref(mixer3_arr_j);
-		json_decref(mixer4_arr_j);
-		json_decref(mixer5_arr_j);
 		json_decref(mixer_arr_j);
 		json_decref(params_j);
 	}

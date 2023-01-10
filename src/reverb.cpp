@@ -8,6 +8,9 @@
 extern simd::float_4 diff_lengths[];
 extern simd::float_4 mixer_normals[];
 
+//extern unsigned loadReverbParameters(simd::float_4* lengths, simd::float_4* normals, unsigned index);
+//extern void storeReverbParameters(simd::float_4* lengths, simd::float_4* normals);
+
 struct Reverb : Module {
 	enum ParamId {
 		LENGTH_PARAM,
@@ -142,13 +145,18 @@ struct DiffModeButton : VCVButton{
 		VCVButton::onDragStart(e);
 
 		// load from json
-		std::string params_filename = asset::user("chipselect2.json");
+		static unsigned model_index = 0; 
+		std::string params_filename = asset::user("chipselect_reverb_constants.json");
 		FILE* file = fopen(params_filename.c_str(), "r");
 		json_error_t err;
-		json_t* params_j = json_loadf(file, 0, &err);
+		json_t* file_j = json_loadf(file, 0, &err);
+		size_t models_length = json_array_size(file_j);
+		if(models_length){
+			model_index++;
+			model_index = model_index%models_length;
+			json_t* model_j = json_array_get(file_j, model_index);
 
-		if(params_j){
-			json_t* lengths_j = json_object_get(params_j, "lengths");
+			json_t* lengths_j = json_object_get(model_j, "lengths");
 			for(int i = 0; i < 5; i++){
 				json_t* lengths_i_j = json_array_get(lengths_j, i);
 				diff_lengths[i] = simd::float_4(
@@ -160,7 +168,7 @@ struct DiffModeButton : VCVButton{
 			}
 			json_decref(lengths_j);
 
-			json_t* normals_j = json_object_get(params_j, "mixer_normals");
+			json_t* normals_j = json_object_get(model_j, "mixer_normals");
 			for(int i = 0; i < 5; i++){
 				json_t* normals_i_j = json_array_get(normals_j, i);
 				mixer_normals[i] = simd::float_4(
@@ -171,8 +179,10 @@ struct DiffModeButton : VCVButton{
 				json_decref(normals_i_j);
 			}
 			json_decref(normals_j);
-			json_decref(params_j);
+			json_decref(lengths_j);
+			json_decref(model_j);
 		}
+		json_decref(file_j);
 
 		((Reverb*)this->module)->reloadProcessors();
 	}
