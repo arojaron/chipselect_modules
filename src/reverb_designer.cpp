@@ -2,6 +2,8 @@
 
 #include "components/diffusion_stage.hpp"
 
+#include "reverb_param_store.h"
+
 static simd::float_4 const init_lengths = simd::float_4::zero();
 static simd::float_4 const init_normal = simd::float_4(1, 1, 1, 1);
 
@@ -78,8 +80,7 @@ struct ReverbDesigner : Module {
 		LIGHTS_LEN
 	};
 
-	simd::float_4 lengths[5] = {init_lengths};
-	simd::float_4 normals[5] = {init_normal};
+	ReverbParameters rev_params;
 
 	float FS = 48000.0;
 	cs::DiffusionStage stage1;
@@ -166,38 +167,40 @@ struct ReverbDesigner : Module {
 
 	void genReverb(void)
 	{
-		lengths[0] = simd::float_4(params[DEL11_PARAM].getValue(), params[DEL12_PARAM].getValue(), params[DEL13_PARAM].getValue(), params[DEL14_PARAM].getValue());
-		lengths[1] = simd::float_4(params[DEL21_PARAM].getValue(), params[DEL22_PARAM].getValue(), params[DEL23_PARAM].getValue(), params[DEL24_PARAM].getValue());
-		lengths[2] = simd::float_4(params[DEL31_PARAM].getValue(), params[DEL32_PARAM].getValue(), params[DEL33_PARAM].getValue(), params[DEL34_PARAM].getValue());
-		lengths[3] = simd::float_4(params[DEL41_PARAM].getValue(), params[DEL42_PARAM].getValue(), params[DEL43_PARAM].getValue(), params[DEL44_PARAM].getValue());
-		lengths[4] = simd::float_4(params[DEL51_PARAM].getValue(), params[DEL52_PARAM].getValue(), params[DEL53_PARAM].getValue(), params[DEL54_PARAM].getValue());
-		lengths[0] *= simd::float_4(params[SCALE1_PARAM].getValue());
-		lengths[1] *= simd::float_4(params[SCALE2_PARAM].getValue());
-		lengths[2] *= simd::float_4(params[SCALE3_PARAM].getValue());
-		lengths[3] *= simd::float_4(params[SCALE4_PARAM].getValue());
-		lengths[4] *= simd::float_4(params[SCALE5_PARAM].getValue());
+		rev_params.lengths[0] = simd::float_4(params[DEL11_PARAM].getValue(), params[DEL12_PARAM].getValue(), params[DEL13_PARAM].getValue(), params[DEL14_PARAM].getValue());
+		rev_params.lengths[1] = simd::float_4(params[DEL21_PARAM].getValue(), params[DEL22_PARAM].getValue(), params[DEL23_PARAM].getValue(), params[DEL24_PARAM].getValue());
+		rev_params.lengths[2] = simd::float_4(params[DEL31_PARAM].getValue(), params[DEL32_PARAM].getValue(), params[DEL33_PARAM].getValue(), params[DEL34_PARAM].getValue());
+		rev_params.lengths[3] = simd::float_4(params[DEL41_PARAM].getValue(), params[DEL42_PARAM].getValue(), params[DEL43_PARAM].getValue(), params[DEL44_PARAM].getValue());
+		rev_params.lengths[4] = simd::float_4(params[DEL51_PARAM].getValue(), params[DEL52_PARAM].getValue(), params[DEL53_PARAM].getValue(), params[DEL54_PARAM].getValue());
+		rev_params.lengths[0] *= simd::float_4(params[SCALE1_PARAM].getValue());
+		rev_params.lengths[1] *= simd::float_4(params[SCALE2_PARAM].getValue());
+		rev_params.lengths[2] *= simd::float_4(params[SCALE3_PARAM].getValue());
+		rev_params.lengths[3] *= simd::float_4(params[SCALE4_PARAM].getValue());
+		rev_params.lengths[4] *= simd::float_4(params[SCALE5_PARAM].getValue());
 		
-		normals[0] = simd::float_4(params[MIX11_PARAM].getValue(), params[MIX12_PARAM].getValue(), params[MIX13_PARAM].getValue(), params[MIX14_PARAM].getValue());
-		normals[1] = simd::float_4(params[MIX21_PARAM].getValue(), params[MIX22_PARAM].getValue(), params[MIX23_PARAM].getValue(), params[MIX24_PARAM].getValue());
-		normals[2] = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
-		normals[3] = simd::float_4(params[MIX41_PARAM].getValue(), params[MIX42_PARAM].getValue(), params[MIX43_PARAM].getValue(), params[MIX44_PARAM].getValue());
-		normals[4] = simd::float_4(params[MIX51_PARAM].getValue(), params[MIX52_PARAM].getValue(), params[MIX53_PARAM].getValue(), params[MIX54_PARAM].getValue());
-		stage1 = cs::DiffusionStage(lengths[0], normals[0], FS);
-		stage2 = cs::DiffusionStage(lengths[1], normals[1], FS);
-		stage3 = cs::DiffusionStage(lengths[2], normals[2], FS);
-		stage4 = cs::DiffusionStage(lengths[3], normals[3], FS);
-		stage5 = cs::DiffusionStage(lengths[4], normals[4], FS);
+		rev_params.normals[0] = simd::float_4(params[MIX11_PARAM].getValue(), params[MIX12_PARAM].getValue(), params[MIX13_PARAM].getValue(), params[MIX14_PARAM].getValue());
+		rev_params.normals[1] = simd::float_4(params[MIX21_PARAM].getValue(), params[MIX22_PARAM].getValue(), params[MIX23_PARAM].getValue(), params[MIX24_PARAM].getValue());
+		rev_params.normals[2] = simd::float_4(params[MIX31_PARAM].getValue(), params[MIX32_PARAM].getValue(), params[MIX33_PARAM].getValue(), params[MIX34_PARAM].getValue());
+		rev_params.normals[3] = simd::float_4(params[MIX41_PARAM].getValue(), params[MIX42_PARAM].getValue(), params[MIX43_PARAM].getValue(), params[MIX44_PARAM].getValue());
+		rev_params.normals[4] = simd::float_4(params[MIX51_PARAM].getValue(), params[MIX52_PARAM].getValue(), params[MIX53_PARAM].getValue(), params[MIX54_PARAM].getValue());
+		stage1 = cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS);
+		stage2 = cs::DiffusionStage(rev_params.lengths[1], rev_params.normals[1], FS);
+		stage3 = cs::DiffusionStage(rev_params.lengths[2], rev_params.normals[2], FS);
+		stage4 = cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS);
+		stage5 = cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS);
 	}
 
 	void storeReverb(void)
 	{
+		storeReverbParameters(rev_params);
+		/*
 		json_t* lengths_arr_j = json_array();
 		for(int i = 0; i < 5; i++){
 			json_t* lengths_i_arr_j = json_array();
-			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][0]));
-			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][1]));
-			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][2]));
-			json_array_append_new(lengths_i_arr_j, json_real(lengths[i][3]));
+			json_array_append_new(lengths_i_arr_j, json_real(rev_params.lengths[i][0]));
+			json_array_append_new(lengths_i_arr_j, json_real(rev_params.lengths[i][1]));
+			json_array_append_new(lengths_i_arr_j, json_real(rev_params.lengths[i][2]));
+			json_array_append_new(lengths_i_arr_j, json_real(rev_params.lengths[i][3]));
 			json_array_append(lengths_arr_j, lengths_i_arr_j);
 			json_decref(lengths_i_arr_j);
 		}
@@ -205,10 +208,10 @@ struct ReverbDesigner : Module {
 		json_t* mixer_arr_j = json_array();
 		for(int i = 0; i < 5; i++){
 			json_t* mixer_i_arr_j = json_array();
-			json_array_append_new(mixer_i_arr_j, json_real(normals[i][0]));
-			json_array_append_new(mixer_i_arr_j, json_real(normals[i][1]));
-			json_array_append_new(mixer_i_arr_j, json_real(normals[i][2]));
-			json_array_append_new(mixer_i_arr_j, json_real(normals[i][3]));
+			json_array_append_new(mixer_i_arr_j, json_real(rev_params.normals[i][0]));
+			json_array_append_new(mixer_i_arr_j, json_real(rev_params.normals[i][1]));
+			json_array_append_new(mixer_i_arr_j, json_real(rev_params.normals[i][2]));
+			json_array_append_new(mixer_i_arr_j, json_real(rev_params.normals[i][3]));
 			json_array_append(mixer_arr_j, mixer_i_arr_j);
 			json_decref(mixer_i_arr_j);
 		}
@@ -239,6 +242,7 @@ struct ReverbDesigner : Module {
 		json_decref(lengths_arr_j);
 		json_decref(mixer_arr_j);
 		json_decref(params_j);
+		*/
 	}
 
 	void process(const ProcessArgs& args) override

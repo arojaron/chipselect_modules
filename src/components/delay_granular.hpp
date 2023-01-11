@@ -15,15 +15,15 @@ public:
     Delay2H(unsigned cap) 
     : capacity(cap)
     {
-        buffer = std::vector<float>(capacity, 0.0);
+        buffer = std::vector<float>(capacity, 0.f);
     }
 
     void step(float in, float delay_1, float delay_2, float* out_1, float* out_2)
     {
-        if(delay_1 < 0.0) delay_1 = 0.0;
-        if(delay_1 > 1.0) delay_1 = 1.0;
-        if(delay_2 < 0.0) delay_2 = 0.0;
-        if(delay_2 > 1.0) delay_2 = 1.0;
+        if(delay_1 < 0.f) delay_1 = 0.f;
+        if(delay_1 > 1.f) delay_1 = 1.f;
+        if(delay_2 < 0.f) delay_2 = 0.f;
+        if(delay_2 > 1.f) delay_2 = 1.f;
         
         if(!capacity){
             *out_1 = in;
@@ -58,11 +58,11 @@ public:
 
 inline float xfade(float A, float B, float index)
 {
-    if(index >= 1.0){
+    if(index >= 1.f){
         return A;
     }
-    float A_coef = index*index*(3.0 - 2.0*index);   // mixing up
-    float B_coef = 1.0 - A_coef;                    // mixing down
+    float A_coef = index*index*(3.f - 2.f*index);   // mixing up
+    float B_coef = 1.f - A_coef;                    // mixing down
     return A*A_coef + B*B_coef;
 }
 
@@ -74,7 +74,7 @@ private:
 
 public:
     GrainClock(unsigned per) 
-    : period(per), frequency(1.0/(float)per) {}
+    : period(per), frequency(1.f/(float)per) {}
 
     float getIndex(void)
     {

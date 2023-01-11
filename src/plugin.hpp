@@ -11,3 +11,4 @@ extern Plugin* pluginInstance;
 extern Model* modelReverb;
 extern Model* modelReverbDesigner;
 extern Model* modelLowPass;
+extern Model* modelDemoer;

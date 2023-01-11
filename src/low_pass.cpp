@@ -58,7 +58,7 @@ struct LowPass : Module {
 		float res_mod = 0.1*inputs[RES_MOD_INPUT].getVoltage();
 		float reso_param = res_knob + res_mod_depth*res_mod;
 
-		reso_param = rescale(reso_param, 0, 1, 0.5, 100);
+		reso_param = rescale(reso_param, 0, 1, 0.5, 1000);
 
 		filter.setParams(cutoff_param, reso_param);
 

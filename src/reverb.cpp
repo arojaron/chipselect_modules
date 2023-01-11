@@ -5,11 +5,7 @@
 #include "components/matched_biquad.hpp"
 #include "components/transient_detection.hpp"
 
-extern simd::float_4 diff_lengths[];
-extern simd::float_4 mixer_normals[];
-
-//extern unsigned loadReverbParameters(simd::float_4* lengths, simd::float_4* normals, unsigned index);
-//extern void storeReverbParameters(simd::float_4* lengths, simd::float_4* normals);
+#include "reverb_param_store.h"
 
 struct Reverb : Module {
 	enum ParamId {
@@ -38,6 +34,8 @@ struct Reverb : Module {
 		LIGHTS_LEN
 	};
 
+	ReverbParameters rev_params;
+
 	float FS = 48000.0;
 	cs::DiffusionStage diffusion1;
 	cs::DiffusionStage diffusion2;
@@ -46,15 +44,17 @@ struct Reverb : Module {
 	cs::DiffusionStage delay;
 	cs::OnePole<simd::float_4> hp_filter;
 	cs::OnePole<simd::float_4> lp_filter;
-
 	cs::Ducking duck;
 
+	unsigned model_index = 0;
+	simd::float_4 back_fed = simd::float_4::zero();
+
 	Reverb() 
-	: diffusion1(cs::DiffusionStage(diff_lengths[0], mixer_normals[0], FS)),
-	  diffusion2(cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS)),
-	  diffusion3(cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS)),
-	  diffusion4(cs::DiffusionStage(diff_lengths[3], mixer_normals[3], FS)),
-	  delay(cs::DiffusionStage(diff_lengths[4], mixer_normals[4], FS)),
+	: diffusion1(cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS)),
+	  diffusion2(cs::DiffusionStage(rev_params.lengths[1], rev_params.normals[1], FS)),
+	  diffusion3(cs::DiffusionStage(rev_params.lengths[2], rev_params.normals[2], FS)),
+	  diffusion4(cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS)),
+	  delay(cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS)),
 	  hp_filter(cs::OnePole<simd::float_4>(FS)),
 	  lp_filter(cs::OnePole<simd::float_4>(FS))
 	{
@@ -71,12 +71,12 @@ struct Reverb : Module {
 		configInput(RIGHT_INPUT, "Right");
 		configOutput(LEFT_OUTPUT, "Left");
 		configOutput(RIGHT_OUTPUT, "Right");
+
+		model_index = loadModel(model_index);
 	}
 
 	void process(const ProcessArgs& args) override
 	{
-		static simd::float_4 back_fed = simd::float_4::zero();
-
 		float diff_depth = params[DIFF_PARAM].getValue();
 		diff_depth = dsp::cubic(diff_depth);
 		diffusion1.setScale(diff_depth);
@@ -111,8 +111,8 @@ struct Reverb : Module {
 		outputs[LEFT_OUTPUT].setVoltage(drywet*v[0] + (1-drywet)*left);
 		outputs[RIGHT_OUTPUT].setVoltage(drywet*v[1] + (1-drywet)*right);
 
-		float delay0 = params[LENGTH_PARAM].getValue();
-		delay.setScale(dsp::cubic(delay0));
+		float delay_scale = params[LENGTH_PARAM].getValue();
+		delay.setScale(dsp::cubic(delay_scale));
 
 		v = delay.process(v);
 
@@ -127,13 +127,26 @@ struct Reverb : Module {
 		reloadProcessors();
 	}
 
+	void loadNextModel(void)
+	{
+		model_index = loadModel(++model_index);
+	}
+
+	unsigned loadModel(unsigned index)
+	{
+		unsigned ret = loadReverbParameters(rev_params, model_index);
+		reloadProcessors();
+		return ret;
+	}
+
 	void reloadProcessors(void)
 	{
-		diffusion1 = cs::DiffusionStage(diff_lengths[0], mixer_normals[0], FS);
-		diffusion2 = cs::DiffusionStage(diff_lengths[1], mixer_normals[1], FS);
-		diffusion3 = cs::DiffusionStage(diff_lengths[2], mixer_normals[2], FS);
-		diffusion4 = cs::DiffusionStage(diff_lengths[3], mixer_normals[3], FS);
-	  	delay = cs::DiffusionStage(diff_lengths[4], mixer_normals[4], FS);
+		back_fed = simd::float_4::zero();
+		diffusion1 = cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS);
+		diffusion2 = cs::DiffusionStage(rev_params.lengths[1], rev_params.normals[1], FS);
+		diffusion3 = cs::DiffusionStage(rev_params.lengths[2], rev_params.normals[2], FS);
+		diffusion4 = cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS);
+	  	delay = cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
 		lp_filter = cs::OnePole<simd::float_4>(FS);
 	}
@@ -143,48 +156,7 @@ struct DiffModeButton : VCVButton{
 	void onDragStart(const DragStartEvent& e) override
 	{
 		VCVButton::onDragStart(e);
-
-		// load from json
-		static unsigned model_index = 0; 
-		std::string params_filename = asset::user("chipselect_reverb_constants.json");
-		FILE* file = fopen(params_filename.c_str(), "r");
-		json_error_t err;
-		json_t* file_j = json_loadf(file, 0, &err);
-		size_t models_length = json_array_size(file_j);
-		if(models_length){
-			model_index++;
-			model_index = model_index%models_length;
-			json_t* model_j = json_array_get(file_j, model_index);
-
-			json_t* lengths_j = json_object_get(model_j, "lengths");
-			for(int i = 0; i < 5; i++){
-				json_t* lengths_i_j = json_array_get(lengths_j, i);
-				diff_lengths[i] = simd::float_4(
-				json_real_value(json_array_get(lengths_i_j, 0)), 
-				json_real_value(json_array_get(lengths_i_j, 1)), 
-				json_real_value(json_array_get(lengths_i_j, 2)), 
-				json_real_value(json_array_get(lengths_i_j, 3)));
-				json_decref(lengths_i_j);
-			}
-			json_decref(lengths_j);
-
-			json_t* normals_j = json_object_get(model_j, "mixer_normals");
-			for(int i = 0; i < 5; i++){
-				json_t* normals_i_j = json_array_get(normals_j, i);
-				mixer_normals[i] = simd::float_4(
-				json_real_value(json_array_get(normals_i_j, 0)), 
-				json_real_value(json_array_get(normals_i_j, 1)), 
-				json_real_value(json_array_get(normals_i_j, 2)), 
-				json_real_value(json_array_get(normals_i_j, 3)));
-				json_decref(normals_i_j);
-			}
-			json_decref(normals_j);
-			json_decref(lengths_j);
-			json_decref(model_j);
-		}
-		json_decref(file_j);
-
-		((Reverb*)this->module)->reloadProcessors();
+		((Reverb*)this->module)->loadNextModel();
 	}
 };
 

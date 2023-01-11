@@ -15,4 +15,5 @@ void init(Plugin* p) {
 	p->addModel(modelReverb);
 	p->addModel(modelReverbDesigner);
 	p->addModel(modelLowPass);
+	p->addModel(modelDemoer);
 }
