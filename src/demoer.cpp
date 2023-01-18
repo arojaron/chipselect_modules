@@ -34,8 +34,8 @@ struct Demoer : Module {
 	: detector(cs::TransientDetector(FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(A_PARAM, 0.f, 1.f, 0.f, "A");
-		configParam(B_PARAM, 0.f, 1.f, 0.f, "B");
+		configParam(A_PARAM, std::log2(0.0000001), std::log2(0.005), std::log2(0.0000001), "A", "", 2);
+		configParam(B_PARAM, std::log2(0.0000001), std::log2(0.005), std::log2(0.0000001), "B", "", 2);
 		configInput(A_INPUT, "A");
 		configInput(B_INPUT, "B");
 		configInput(C_INPUT, "C");
@@ -48,8 +48,12 @@ struct Demoer : Module {
 
 	void process(const ProcessArgs& args) override
 	{
+		float follower_rise = dsp::approxExp2_taylor5(params[A_PARAM].getValue());
+		float lagger_rise = dsp::approxExp2_taylor5(params[B_PARAM].getValue());
+		detector.setRiseTaus(follower_rise, lagger_rise);
+		
 		float signal = inputs[A_INPUT].getVoltage();
-		outputs[C_OUTPUT].setVoltage(detector.process(signal));
+		outputs[C_OUTPUT].setVoltage(10*detector.process(signal));
 		outputs[A_OUTPUT].setVoltage(detector.following);
 		outputs[B_OUTPUT].setVoltage(detector.lagging);
 	}
