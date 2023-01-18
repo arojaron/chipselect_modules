@@ -78,7 +78,7 @@ struct Reverb : Module {
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
 		configParam(DRYWET_PARAM, 0.f, 1.f, 1.f, "Dry-Wet");
-		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(40.f), std::log2(0.1f), "Reverb time", "s", 2);
+		configParam(FEEDBACK_PARAM, std::log2(0.5f), std::log2(100.f), std::log2(0.5f), "Reverb time", "s", 2);
 		configParam(DUCKING_PARAM, 0.f, 2.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
