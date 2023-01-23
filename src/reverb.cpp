@@ -78,8 +78,8 @@ struct Reverb : Module {
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
 		configParam(DRYWET_PARAM, 0.f, 1.f, 1.f, "Dry-Wet");
-		configParam(FEEDBACK_PARAM, std::log2(0.5f), std::log2(100.f), std::log2(0.5f), "Reverb time", "s", 2);
-		configParam(DUCKING_PARAM, 0.f, 2.f, 0.f, "Ducking");
+		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(100.f), std::log2(0.1f), "Reverb time", "s", 2);
+		configParam(DUCKING_PARAM, 0.f, 1.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
 		configOutput(LEFT_OUTPUT, "Left");
@@ -96,10 +96,10 @@ struct Reverb : Module {
 
 		// setting parameters
 		float diff_depth = params[DIFF_PARAM].getValue();
-		diff_depth = dsp::cubic(diff_depth);
+		diff_depth = diff_depth*diff_depth;
 		float delay_rem = 1-diff_depth;
 		float delay_scale = params[LENGTH_PARAM].getValue();
-		delay_scale = dsp::cubic(delay_scale);
+		delay_scale = delay_scale*delay_scale;
 		float delay_time = delay_scale;
 		diff_depth *= delay_scale;
 		delay_scale *= delay_rem;
@@ -110,13 +110,13 @@ struct Reverb : Module {
 		diffusion4.setScale(diff_depth);
 		delay.setScale(delay_scale);
 
-		float hp_param = dsp::quintic(params[HP_PARAM].getValue());
-		float lp_param = dsp::quintic(params[LP_PARAM].getValue());
+		float hp_param = dsp::cubic(params[HP_PARAM].getValue());
+		float lp_param = dsp::cubic(params[LP_PARAM].getValue());
 		hp_filter.setFrequency(0.5*FS*hp_param);
 		lp_filter.setFrequency(0.5*FS*lp_param);
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
-		float ducking_depth = duck.process(duck_scaling*0.5*(left + right));
+		float ducking_depth = duck.process(duck_scaling*(left + right));
 		lights[DUCKING_LIGHT].setBrightness(ducking_depth);
 
 		float drywet = params[DRYWET_PARAM].getValue();

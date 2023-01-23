@@ -20,20 +20,8 @@
       "tags": []
     },
     {
-      "slug": "ReverbDesigner",
-      "name": "ReverbDesigner",
-      "description": "",
-      "tags": []
-    },
-    {
       "slug": "LowPass",
       "name": "LowPass",
-      "description": "",
-      "tags": []
-    },
-    {
-      "slug": "Demoer",
-      "name": "Demoer",
       "description": "",
       "tags": []
     }
