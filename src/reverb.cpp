@@ -71,7 +71,7 @@ struct Reverb : Module {
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.5f, "Size");
 		configParam(LENGTH_MOD_PARAM, -1.f, 1.f, 0.f, "Size modulation depth");
 		configInput(LENGTH_MOD_INPUT, "Size modulation");
-		configParam(HP_PARAM, 0.f, 1.f, 0.f, "High pass");
+		configParam(HP_PARAM, 0.1f, 1.f, 0.f, "High pass");
 		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
 		configParam(DIFF_MOD_PARAM, -1.f, 1.f, 0.f, "Diffusion modulation depth");
@@ -100,6 +100,8 @@ struct Reverb : Module {
 		float delay_rem = 1-diff_depth;
 		float delay_scale = params[LENGTH_PARAM].getValue();
 		delay_scale = delay_scale*delay_scale;
+		float delay_vpoct = dsp::approxExp2_taylor5(inputs[LENGTH_MOD_INPUT].getVoltage());
+		delay_scale /= delay_vpoct;
 		float delay_time = delay_scale;
 		diff_depth *= delay_scale;
 		delay_scale *= delay_rem;
@@ -113,7 +115,7 @@ struct Reverb : Module {
 		float hp_param = dsp::cubic(params[HP_PARAM].getValue());
 		float lp_param = dsp::cubic(params[LP_PARAM].getValue());
 		hp_filter.setFrequency(0.5*FS*hp_param);
-		lp_filter.setFrequency(0.5*FS*lp_param);
+		lp_filter.setFrequency(0.5*FS*lp_param*delay_vpoct);
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
 		float ducking_depth = duck.process(duck_scaling*(left + right));
@@ -121,7 +123,8 @@ struct Reverb : Module {
 
 		float drywet = params[DRYWET_PARAM].getValue();
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue());
-		float rt_2mag = -6*3.32192809489*(delay_time/reverb_time);	// *log2(10)
+		// float rt_2mag = -6*3.32192809489*(delay_time/reverb_time);	// *log2(10)
+		float rt_2mag = -6*(delay_time/reverb_time);
 		float feedback = (1-ducking_depth)*dsp::approxExp2_taylor5(rt_2mag);
 
 		// processing signal
