@@ -24,6 +24,12 @@
       "name": "LowPass",
       "description": "",
       "tags": []
+    },
+    {
+      "slug": "Pulse",
+      "name": "Pulse",
+      "description": "",
+      "tags": []
     }
   ]
 }
