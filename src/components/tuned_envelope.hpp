@@ -8,7 +8,7 @@ struct TunedDecayEnvelope {
 	T fall = 0.f;
 
 	void setFrequency(T freq) {
-		this->fall = 10.f * freq;
+		this->fall = simd::abs(10.f * freq);
 	}
 	T process(T deltaTime, T in) {
 		out = simd::fmax(in, out - fall * deltaTime);

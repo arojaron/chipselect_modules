@@ -1,6 +1,7 @@
 #include "plugin.hpp"
 
 #include "components/matched_biquad.hpp"
+#include "components/tuned_envelope.hpp"
 
 
 struct LowPass : Module {
@@ -28,6 +29,8 @@ struct LowPass : Module {
 	};
 
 	cs::LowPass<float> filter;
+	cs::TunedDecayEnvelope<float> ping_processor;
+	dsp::BooleanTrigger ping_trigger;
 
 	LowPass()
 	: filter(cs::LowPass<float>(48000))
@@ -58,12 +61,18 @@ struct LowPass : Module {
 		float res_mod = 0.1*inputs[RES_MOD_INPUT].getVoltage();
 		float reso_param = res_knob + res_mod_depth*res_mod;
 
-		reso_param = rescale(reso_param, 0, 1, 0.5, 1000);
+		//reso_param = rescale(reso_param, 0, 1, 0.5, 1000);
+		reso_param *= cutoff_param;
 
 		filter.setParams(cutoff_param, reso_param);
 
+		ping_processor.setFrequency(cutoff_param);
+
+		float ping_level = inputs[PING_INPUT].getVoltage();
+		float triggered = ping_trigger.process(0.f < ping_level);
+		float pulse = ping_level * ping_processor.process(args.sampleTime, triggered ? 1.f : 0.f);
 		float in = inputs[FILTER_INPUT].getVoltage();
-		outputs[FILTER_OUTPUT].setVoltage(filter.process(in));
+		outputs[FILTER_OUTPUT].setVoltage(filter.process(in + pulse));
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
