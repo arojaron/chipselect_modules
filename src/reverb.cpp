@@ -71,7 +71,7 @@ struct Reverb : Module {
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.5f, "Size");
 		configParam(LENGTH_MOD_PARAM, -1.f, 1.f, 0.f, "Size modulation depth");
 		configInput(LENGTH_MOD_INPUT, "Size modulation");
-		configParam(HP_PARAM, 0.f, 1.f, 0.f, "High pass");
+		configParam(HP_PARAM, 0.1f, 1.f, 0.1f, "High pass");
 		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
 		configParam(DIFF_MOD_PARAM, -1.f, 1.f, 0.f, "Diffusion modulation depth");
@@ -112,8 +112,8 @@ struct Reverb : Module {
 
 		float hp_param = dsp::cubic(params[HP_PARAM].getValue());
 		float lp_param = dsp::cubic(params[LP_PARAM].getValue());
-		hp_filter.setFrequency(0.5*FS*hp_param);
-		lp_filter.setFrequency(0.5*FS*lp_param);
+		hp_filter.setFrequency(math::rescale(hp_param, 0.f, 1.f, 0.f, 24000.f));
+		lp_filter.setFrequency(math::rescale(lp_param, 0.f, 1.f, 0.f, 24000.f));
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
 		float ducking_depth = duck.process(duck_scaling*(left + right));
