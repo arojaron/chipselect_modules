@@ -89,7 +89,7 @@ struct Reverb : Module {
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
 		configParam(DRYWET_PARAM, 0.f, 1.f, 0.5f, "Dry-Wet");
-		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(100.f), std::log2(0.1f), "Reverb time", "s", 2);
+		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(20.f), std::log2(0.1f), "Reverb time", "s", 2);
 		configParam(DUCKING_PARAM, 0.f, 1.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
@@ -107,10 +107,10 @@ struct Reverb : Module {
 
 		// setting parameters
 		float diff_depth = params[DIFF_PARAM].getValue();
-		diff_depth = diff_depth*diff_depth;
+		//diff_depth = diff_depth*diff_depth;
 		float delay_rem = 1-diff_depth;
 		float delay_scale = params[LENGTH_PARAM].getValue();
-		delay_scale = delay_scale*delay_scale;
+		delay_scale = delay_scale*delay_scale*delay_scale;
 		float delay_vpoct = dsp::approxExp2_taylor5(inputs[LENGTH_MOD_INPUT].getVoltage());
 		delay_scale /= delay_vpoct;
 		float delay_time = delay_scale;

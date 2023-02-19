@@ -40,7 +40,7 @@ struct LowPass : Module {
 	: filter(cs::LowPass<float>(48000))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(21000.f), std::log2(55.f), "Frequency", "Hz", 2);
+		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(55.f), "Frequency", "Hz", 2);
 		configParam(F_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "FM depth");
 		configParam(Q_PARAM, 0.f, 1.f, 0.f, "Q");
 		configParam(Q_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "Q mod. depth");
@@ -58,20 +58,20 @@ struct LowPass : Module {
 		float freq_knob = params[FREQUENCY_PARAM].getValue();
 		float vpoct = inputs[VPOCT_INPUT].getVoltage();
 		float freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
-		float f_mod_depth = 24000.f * args.sampleTime * dsp::quintic(params[F_MOD_DEPTH_PARAM].getValue());
+		float f_mod_depth = 5000.f * args.sampleTime * dsp::quintic(params[F_MOD_DEPTH_PARAM].getValue());
 		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
 		float cutoff_param = freq_tuning + f_mod_depth * f_mod;
 
-		float q_knob = dsp::quintic(params[Q_PARAM].getValue());
+		float q_knob = dsp::cubic(params[Q_PARAM].getValue());
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
 		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
 		float reso_param = q_knob + q_mod_depth * q_mod;
 
 		if(res_mode){
-			reso_param *= 5.f * freq_tuning;
+			reso_param *= 0.5f * freq_tuning;
 		}
 		else{
-			reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 1000.f);
+			reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 50.f);
 		}
 		
 		filter.setParams(cutoff_param, reso_param);
