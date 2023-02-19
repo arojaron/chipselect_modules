@@ -5,8 +5,6 @@
 #include "components/matched_biquad.hpp"
 #include "components/transient_detection.hpp"
 
-#include "reverb_param_store.h"
-
 struct Reverb : Module {
 	enum ParamId {
 		LENGTH_PARAM,
@@ -41,6 +39,19 @@ struct Reverb : Module {
 		DUCKING_LIGHT,
 		LIGHTS_LEN
 	};
+
+	struct ReverbParameters{
+		simd::float_4 lengths[5] = {};
+		simd::float_4 normals[5] = {
+			simd::float_4(1, 1, 1, 1),
+			simd::float_4(1, 1, 1, 1),
+			simd::float_4(1, 1, 1, 1),
+			simd::float_4(1, 1, 1, 1),
+			simd::float_4(1, 1, 1, 1)
+		};
+	};
+
+	unsigned loadReverbParameters(ReverbParameters& params, unsigned model_index);
 
 	ReverbParameters rev_params;
 
@@ -243,3 +254,47 @@ struct ReverbWidget : ModuleWidget {
 
 
 Model* modelReverb = createModel<Reverb, ReverbWidget>("Reverb");
+
+unsigned Reverb::loadReverbParameters(ReverbParameters& params, unsigned model_index)
+{
+	std::string params_filename = asset::user("chipselect_reverb_constants.json");
+	
+	FILE* file = fopen(params_filename.c_str(), "r");
+	json_error_t err;
+	json_t* file_j = json_loadf(file, 0, &err);
+	size_t models_length = json_array_size(file_j);
+	if(models_length){
+		model_index %= models_length;
+		json_t* model_j = json_array_get(file_j, model_index);
+
+		json_t* lengths_j = json_object_get(model_j, "lengths");
+		for(int i = 0; i < 5; i++){
+			json_t* lengths_i_j = json_array_get(lengths_j, i);
+			params.lengths[i] = simd::float_4(
+			json_real_value(json_array_get(lengths_i_j, 0)), 
+			json_real_value(json_array_get(lengths_i_j, 1)), 
+			json_real_value(json_array_get(lengths_i_j, 2)), 
+			json_real_value(json_array_get(lengths_i_j, 3)));
+			json_decref(lengths_i_j);
+		}
+		json_decref(lengths_j);
+
+		json_t* normals_j = json_object_get(model_j, "mixer_normals");
+		for(int i = 0; i < 5; i++){
+			json_t* normals_i_j = json_array_get(normals_j, i);
+			params.normals[i] = simd::float_4(
+			json_real_value(json_array_get(normals_i_j, 0)), 
+			json_real_value(json_array_get(normals_i_j, 1)), 
+			json_real_value(json_array_get(normals_i_j, 2)), 
+			json_real_value(json_array_get(normals_i_j, 3)));
+			json_decref(normals_i_j);
+		}
+		json_decref(normals_j);
+		json_decref(lengths_j);
+		json_decref(model_j);
+		json_decref(file_j);
+		return model_index;
+	}
+	json_decref(file_j);
+	return 0;
+}
