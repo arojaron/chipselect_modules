@@ -3,6 +3,7 @@
 #include "components/diffusion_stage.hpp"
 #include "components/one_pole.hpp"
 #include "components/matched_biquad.hpp"
+#include "components/matched_shelving.hpp"
 #include "components/transient_detection.hpp"
 
 struct Reverb : Module {
@@ -65,6 +66,8 @@ struct Reverb : Module {
 	cs::OnePole<simd::float_4> lp_filter;
 	cs::TransientDetector duck;
 
+	cs::HighShelf<simd::float_4> high_shelf;
+
 	unsigned model_index = 0;
 	simd::float_4 back_fed = simd::float_4::zero();
 
@@ -76,7 +79,8 @@ struct Reverb : Module {
 	  delay(cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS)),
 	  hp_filter(cs::OnePole<simd::float_4>(FS)),
 	  lp_filter(cs::OnePole<simd::float_4>(FS)),
-	  duck(cs::TransientDetector(FS))
+	  duck(cs::TransientDetector(FS)),
+	  high_shelf(cs::HighShelf<simd::float_4>(FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.5f, "Size");
@@ -123,10 +127,16 @@ struct Reverb : Module {
 		diffusion4.setScale(diff_depth);
 		delay.setScale(delay_scale);
 
-		float hp_param = dsp::cubic(params[HP_PARAM].getValue());
-		float lp_param = dsp::cubic(params[LP_PARAM].getValue());
-		hp_filter.setFrequency(math::rescale(hp_param, 0.f, 1.f, 0.f, 24000.f));
-		lp_filter.setFrequency(math::rescale(lp_param, 0.f, 1.f, 0.f, 24000.f)*delay_vpoct);
+		//float hp_param = dsp::cubic(params[HP_PARAM].getValue());
+		//float lp_param = dsp::cubic(params[LP_PARAM].getValue());
+		//hp_filter.setFrequency(math::rescale(hp_param, 0.f, 1.f, 0.f, 24000.f));
+		//lp_filter.setFrequency(math::rescale(lp_param, 0.f, 1.f, 0.f, 24000.f)*delay_vpoct);
+
+		hp_filter.setFrequency(30.f);
+
+		float shelf_freq = args.sampleRate * 0.5f * dsp::cubic(params[HP_PARAM].getValue());
+		float shelf_gain = dsp::cubic(params[LP_PARAM].getValue());
+		high_shelf.setParams(shelf_freq, shelf_gain);
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
 		float ducking_depth = duck.process(duck_scaling*(left + right));
@@ -141,9 +151,11 @@ struct Reverb : Module {
 		// processing signal
 		simd::float_4 v = simd::float_4(left, right, left, right);
 		
-		v = v - hp_filter.process(v);
 		v = v + back_fed;
-		v = lp_filter.process(v);
+		v = v - hp_filter.process(v);
+		//v = lp_filter.process(v);
+
+		v = high_shelf.process(v);
 
 		v = diffusion1.process(v);
 		v = diffusion2.process(v);
@@ -209,6 +221,7 @@ struct Reverb : Module {
 	  	delay = cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
 		lp_filter = cs::OnePole<simd::float_4>(FS);
+		high_shelf = cs::HighShelf<simd::float_4>(FS);
 	}
 };
 

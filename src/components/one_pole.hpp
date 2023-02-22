@@ -10,8 +10,8 @@ struct OnePole {
     T FSp2;
 
     T z = T(0);
-    T a = T(1);
-    T b = T(0);
+    T b = T(1);
+    T a = T(0);
 
     OnePole(float FS) : Ts(T(1/FS)), FSp2(T(FS/2)) {}
 
@@ -22,12 +22,12 @@ struct OnePole {
 
         T dfreq = freq*Ts;
 
-        b = simd::exp(dfreq*T(-2.0*M_PI));
-        a = T(1)-b;
+        a = simd::exp(dfreq*T(-2.0*M_PI));
+        b = T(1)-a;
     }
     T process(T in)
     {
-        z = in*a + z*b;
+        z = in*b + z*a;
         return z;
     }
 };
