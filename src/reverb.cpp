@@ -63,7 +63,6 @@ struct Reverb : Module {
 	cs::DiffusionStage diffusion4;
 	cs::DiffusionStage delay;
 	cs::OnePole<simd::float_4> hp_filter;
-	cs::OnePole<simd::float_4> lp_filter;
 	cs::TransientDetector duck;
 
 	cs::HighShelf<simd::float_4> high_shelf;
@@ -78,7 +77,6 @@ struct Reverb : Module {
 	  diffusion4(cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS)),
 	  delay(cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS)),
 	  hp_filter(cs::OnePole<simd::float_4>(FS)),
-	  lp_filter(cs::OnePole<simd::float_4>(FS)),
 	  duck(cs::TransientDetector(FS)),
 	  high_shelf(cs::HighShelf<simd::float_4>(FS))
 	{
@@ -114,8 +112,8 @@ struct Reverb : Module {
 		//diff_depth = diff_depth*diff_depth;
 		float delay_rem = 1-diff_depth;
 		float delay_scale = params[LENGTH_PARAM].getValue();
-		delay_scale = delay_scale*delay_scale*delay_scale;
-		float delay_vpoct = dsp::approxExp2_taylor5(inputs[LENGTH_MOD_INPUT].getVoltage());
+		delay_scale = delay_scale*delay_scale;
+		float delay_vpoct = dsp::approxExp2_taylor5(params[LENGTH_MOD_PARAM].getValue()*inputs[LENGTH_MOD_INPUT].getVoltage());
 		delay_scale /= delay_vpoct;
 		float delay_time = delay_scale;
 		diff_depth *= delay_scale;
@@ -128,19 +126,14 @@ struct Reverb : Module {
 		delay.setScale(delay_scale);
 
 		//float hp_param = dsp::cubic(params[HP_PARAM].getValue());
-		//float lp_param = dsp::cubic(params[LP_PARAM].getValue());
 		//hp_filter.setFrequency(math::rescale(hp_param, 0.f, 1.f, 0.f, 24000.f));
-		//lp_filter.setFrequency(math::rescale(lp_param, 0.f, 1.f, 0.f, 24000.f)*delay_vpoct);
 
-		hp_filter.setFrequency(30.f);
-
-		float shelf_freq = args.sampleRate * 0.5f * dsp::cubic(params[HP_PARAM].getValue());
-		float shelf_gain = dsp::cubic(params[LP_PARAM].getValue());
-		high_shelf.setParams(shelf_freq, shelf_gain);
+		hp_filter.setFrequency(math::rescale(dsp::cubic(params[HP_PARAM].getValue()), 0.f, 1.f, 0.f, 800.f));
+		high_shelf.setParams(700.f*delay_vpoct, dsp::cubic(params[LP_PARAM].getValue()));
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
 		float ducking_depth = duck.process(duck_scaling*(left + right));
-		lights[DUCKING_LIGHT].setBrightness(ducking_depth);
+		lights[DUCKING_LIGHT].setBrightnessSmooth(ducking_depth, args.sampleTime);
 
 		float drywet = params[DRYWET_PARAM].getValue();
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue());
@@ -220,7 +213,6 @@ struct Reverb : Module {
 		diffusion4 = cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS);
 	  	delay = cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
-		lp_filter = cs::OnePole<simd::float_4>(FS);
 		high_shelf = cs::HighShelf<simd::float_4>(FS);
 	}
 };
