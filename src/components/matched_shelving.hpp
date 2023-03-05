@@ -17,6 +17,7 @@ struct HighShelf {
     T b1 = T(0.f);
 
     HighShelf(float FS) : FSp2(T(FS/2)) {}
+    
     void setParams(T freq, T gain)
     {
         freq = simd::ifelse(freq <= 0, -freq, freq);
@@ -36,6 +37,46 @@ struct HighShelf {
     T process(T in)
     {
         z = b0*in + b1*in1 - a*z;
+        in1 = in;
+        return z;
+    }
+};
+
+template <typename T>
+struct TwoShelves{
+    T FSp2;
+    T pi2 = T(M_PI*M_PI);
+
+    T in1 = T(0.f);
+    T z = T(0.f);
+    T a1 = T(0.f);
+    T b0 = T(1.f);
+    T b1 = T(0.f);
+
+    TwoShelves(float FS) : FSp2(T(FS/2)) {}
+    
+    void setParams(T f, T G0, T G1)
+    {
+        f = simd::ifelse(f <= T(0.f), -f, f);
+        f = simd::ifelse(f <= T(1.f), T(1.f), f);
+        G0 = simd::ifelse(G0 <= T(0.0001f), T(0.0001f), G0);
+        G1 = simd::ifelse(G1 <= T(0.0001f), T(0.0001f), G1);
+
+        T f_c = f/FSp2;
+        T f_c2 = f_c*f_c;
+
+        a1 = (G1*f_c2*pi2 - T(4.f)*f_c*simd::sqrt(G1*G1*f_c2 + G0*G1)*T(M_PI) + T(4.f)*G1*f_c2 + T(4.f)*G0)/(G1*f_c2*pi2 - T(4.f)*G1*f_c2 - T(4.f)*G0);
+        
+        T b0pb1 = G0*(1+a1);
+        T b0mb1 = simd::sqrt((1-a1)*(1-a1)*(G0 + G1/f_c2)/(1/G0 + 1/(G1*f_c2)));
+
+        b0 = (b0pb1 + b0mb1)/T(2);
+        b1 = b0pb1 - b0;
+    }
+
+    T process(T in)
+    {
+        z = b0*in + b1*in1 - a1*z;
         in1 = in;
         return z;
     }

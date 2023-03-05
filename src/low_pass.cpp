@@ -10,7 +10,6 @@ struct LowPass : Module {
 		F_MOD_DEPTH_PARAM,
 		Q_PARAM,
 		Q_MOD_DEPTH_PARAM,
-		RESONATOR_MODE_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
@@ -26,15 +25,12 @@ struct LowPass : Module {
 		OUTPUTS_LEN
 	};
 	enum LightId {
-		RESONATOR_MODE_LIGHT,
 		LIGHTS_LEN
 	};
 
 	cs::LowPass<float> filter;
 	cs::TunedDecayEnvelope<float> ping_processor;
 	dsp::BooleanTrigger ping_trigger;
-
-	bool res_mode = false;
 
 	LowPass()
 	: filter(cs::LowPass<float>(48000))
@@ -44,7 +40,6 @@ struct LowPass : Module {
 		configParam(F_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "FM depth");
 		configParam(Q_PARAM, 0.f, 1.f, 0.f, "Q");
 		configParam(Q_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "Q mod. depth");
-		configParam(RESONATOR_MODE_PARAM, 0.f, 1.f, 0.f, "Resonator mode on");
 		configInput(F_MOD_INPUT, "Linear FM");
 		configInput(VPOCT_INPUT, "V/Oct");
 		configInput(PING_INPUT, "Ping");
@@ -66,13 +61,7 @@ struct LowPass : Module {
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
 		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
 		float reso_param = q_knob + q_mod_depth * q_mod;
-
-		if(res_mode){
-			reso_param *= 0.5f * freq_tuning;
-		}
-		else{
-			reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 50.f);
-		}
+		reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 100.f);
 		
 		filter.setParams(cutoff_param, reso_param);
 
@@ -89,20 +78,6 @@ struct LowPass : Module {
 	{
 		filter = cs::LowPass<float>(e.sampleRate);
 	}
-
-	void resModeToggle(void)
-	{
-		res_mode = !res_mode;
-		lights[RESONATOR_MODE_LIGHT].setBrightness(res_mode? 1.f : 0.f);
-	}
-};
-
-struct ResModeButton : VCVButton{
-	void onDragStart(const DragStartEvent& e) override
-	{
-		VCVButton::onDragStart(e);
-		((LowPass*)this->module)->resModeToggle();
-	}
 };
 
 struct LowPassWidget : ModuleWidget {
@@ -114,7 +89,6 @@ struct LowPassWidget : ModuleWidget {
 		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 34.237)), module, LowPass::F_MOD_DEPTH_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 63.908)), module, LowPass::Q_PARAM));
 		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 82.289)), module, LowPass::Q_MOD_DEPTH_PARAM));
-		addParam(createParamCentered<ResModeButton>(mm2px(Vec(15.24, 95.468)), module, LowPass::RESONATOR_MODE_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 34.237)), module, LowPass::F_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 82.289)), module, LowPass::Q_MOD_INPUT));
@@ -123,8 +97,6 @@ struct LowPassWidget : ModuleWidget {
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 118.019)), module, LowPass::FILTER_INPUT));
 
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 118.019)), module, LowPass::FILTER_OUTPUT));
-
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(23.431, 95.468)), module, LowPass::RESONATOR_MODE_LIGHT));
 	}
 };
 

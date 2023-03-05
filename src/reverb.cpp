@@ -23,6 +23,7 @@ struct Reverb : Module {
 	enum InputId {
 		LENGTH_MOD_INPUT,
 		DIFF_MOD_INPUT,
+		DRYWET_MOD_INPUT,
 		LEFT_INPUT,
 		RIGHT_INPUT,
 		INPUTS_LEN
@@ -128,7 +129,7 @@ struct Reverb : Module {
 		//float hp_param = dsp::cubic(params[HP_PARAM].getValue());
 		//hp_filter.setFrequency(math::rescale(hp_param, 0.f, 1.f, 0.f, 24000.f));
 
-		hp_filter.setFrequency(math::rescale(dsp::cubic(params[HP_PARAM].getValue()), 0.f, 1.f, 0.f, 800.f));
+		hp_filter.setFrequency(math::rescale(dsp::cubic(params[HP_PARAM].getValue()), 0.f, 1.f, 0.f, 1800.f));
 		high_shelf.setParams(700.f*delay_vpoct, dsp::cubic(params[LP_PARAM].getValue()));
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
@@ -136,6 +137,8 @@ struct Reverb : Module {
 		lights[DUCKING_LIGHT].setBrightnessSmooth(ducking_depth, args.sampleTime);
 
 		float drywet = params[DRYWET_PARAM].getValue();
+		drywet += inputs[DRYWET_MOD_INPUT].getVoltage() * 0.1;
+		drywet = clamp(drywet);
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue());
 		// float rt_2mag = -6*3.32192809489*(delay_time/reverb_time);	// *log2(10)
 		float rt_2mag = -6*(delay_time/reverb_time);
@@ -243,6 +246,7 @@ struct ReverbWidget : ModuleWidget {
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.759, 12.5)), module, Reverb::LENGTH_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.718, 68.41)), module, Reverb::DIFF_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.89, 83.143)), module, Reverb::DRYWET_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.336, 118.019)), module, Reverb::LEFT_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.691, 118.019)), module, Reverb::RIGHT_INPUT));
 
