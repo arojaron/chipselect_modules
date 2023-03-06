@@ -21,13 +21,13 @@ struct TwoShelf : Module {
 		LIGHTS_LEN
 	};
 
-	cs::TwoShelves<float> filter;
+	cs::Tilting<float> filter;
 
 	TwoShelf() 
-	: filter(cs::TwoShelves<float>(48000.f)){
+	: filter(cs::Tilting<float>(48000.f)){
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(HIGH_PARAM, -30.f, 30.f, 0.f, "");
-		configParam(FREQ_PARAM, 0.f, 1.f, 0.1f, "");
+		configParam(FREQ_PARAM, std::log2(5.f), std::log2(10000.f), std::log2(100.f), "", "Hz", 2);
 		configParam(LOW_PARAM, -30.f, 30.f, 0.f, "");
 		configInput(SIGNAL_INPUT, "");
 		configOutput(SIGNAL_OUTPUT, "");
@@ -36,10 +36,9 @@ struct TwoShelf : Module {
 	void process(const ProcessArgs& args) override 
 	{
 		float G0 = dsp::dbToAmplitude(params[LOW_PARAM].getValue());
-		float G1 = dsp::dbToAmplitude(params[HIGH_PARAM].getValue());
-		float freq = args.sampleRate * 0.5f * params[FREQ_PARAM].getValue();
+		float freq = dsp::approxExp2_taylor5(params[FREQ_PARAM].getValue());
 
-		filter.setParams(freq, G0, G1);
+		filter.setParams(freq, G0);
 		outputs[SIGNAL_OUTPUT].setVoltage(filter.process(inputs[SIGNAL_INPUT].getVoltage()));
 	}
 };
