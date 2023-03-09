@@ -117,6 +117,10 @@ struct TwoShelves{
         in1 = in;
         return z;
     }
+
+    T getActualHighGain(void){
+        return (b0-b1)/(T(1.f)-a1);
+    }
 };
 
 }

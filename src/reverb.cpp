@@ -10,8 +10,9 @@ struct Reverb : Module {
 	enum ParamId {
 		LENGTH_PARAM,
 		LENGTH_MOD_PARAM,
-		LP_PARAM,
-		HP_PARAM,
+		TONE_HIGH_PARAM,
+		TONE_CENTER_PARAM,
+		TONE_LOW_PARAM,
 		DIFF_PARAM,
 		DIFF_MOD_PARAM,
 		DIFF_MODE_PARAM,
@@ -66,7 +67,7 @@ struct Reverb : Module {
 	cs::OnePole<simd::float_4> hp_filter;
 	cs::TransientDetector duck;
 
-	cs::HighShelf<simd::float_4> high_shelf;
+	cs::TwoShelves<simd::float_4> two_shelves;
 
 	unsigned model_index = 0;
 	simd::float_4 back_fed = simd::float_4::zero();
@@ -79,20 +80,21 @@ struct Reverb : Module {
 	  delay(cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS)),
 	  hp_filter(cs::OnePole<simd::float_4>(FS)),
 	  duck(cs::TransientDetector(FS)),
-	  high_shelf(cs::HighShelf<simd::float_4>(FS))
+	  two_shelves(cs::TwoShelves<simd::float_4>(FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(LENGTH_PARAM, 0.f, 1.f, 0.5f, "Size");
 		configParam(LENGTH_MOD_PARAM, -1.f, 1.f, 0.f, "Size modulation depth");
 		configInput(LENGTH_MOD_INPUT, "Size modulation");
-		configParam(HP_PARAM, 0.1f, 1.f, 0.1f, "High pass");
-		configParam(LP_PARAM, 0.f, 1.f, 1.f, "Low pass");
+		configParam(TONE_HIGH_PARAM, -0.99f, 0.99f, 0.f, "Tone");
+		configParam(TONE_CENTER_PARAM, std::log2(500.f), std::log2(10000.f), std::log2(500.f), "Tone center", "Hz", 2);
+		configParam(TONE_LOW_PARAM, 0.1f, 1.f, 0.9f, "Low shelf");
 		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
 		configParam(DIFF_MOD_PARAM, -1.f, 1.f, 0.f, "Diffusion modulation depth");
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
 		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
 		configParam(DRYWET_PARAM, 0.f, 1.f, 0.5f, "Dry-Wet");
-		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(20.f), std::log2(0.1f), "Reverb time", "s", 2);
+		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(200.f), std::log2(0.1f), "Reverb time", "s", 2);
 		configParam(DUCKING_PARAM, 0.f, 1.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
@@ -110,12 +112,12 @@ struct Reverb : Module {
 
 		// setting parameters
 		float diff_depth = params[DIFF_PARAM].getValue();
-		//diff_depth = diff_depth*diff_depth;
-		float delay_rem = 1-diff_depth;
+		float delay_rem = 1.f - diff_depth;
 		float delay_scale = params[LENGTH_PARAM].getValue();
 		delay_scale = delay_scale*delay_scale;
 		float delay_vpoct = dsp::approxExp2_taylor5(params[LENGTH_MOD_PARAM].getValue()*inputs[LENGTH_MOD_INPUT].getVoltage());
 		delay_scale /= delay_vpoct;
+
 		float delay_time = delay_scale;
 		diff_depth *= delay_scale;
 		delay_scale *= delay_rem;
@@ -126,32 +128,41 @@ struct Reverb : Module {
 		diffusion4.setScale(diff_depth);
 		delay.setScale(delay_scale);
 
-		//float hp_param = dsp::cubic(params[HP_PARAM].getValue());
-		//hp_filter.setFrequency(math::rescale(hp_param, 0.f, 1.f, 0.f, 24000.f));
+		hp_filter.setFrequency(10.f);
 
-		hp_filter.setFrequency(math::rescale(dsp::cubic(params[HP_PARAM].getValue()), 0.f, 1.f, 0.f, 1800.f));
-		high_shelf.setParams(700.f*delay_vpoct, dsp::cubic(params[LP_PARAM].getValue()));
+		float tone = params[TONE_HIGH_PARAM].getValue();
+		float high_shelf = 1.f;
+		float low_shelf = 1.f;
+		if(tone < 0){
+			high_shelf = 1.f - tone*tone;
+		}
+		else{
+			low_shelf = 1.f - tone*tone;
+		}
+		two_shelves.setParams(400.f, low_shelf, high_shelf);
+		
+		float drywet = params[DRYWET_PARAM].getValue();
+		drywet += inputs[DRYWET_MOD_INPUT].getVoltage() * 0.1;
+		drywet = clamp(drywet);
 
 		float duck_scaling = (dsp::cubic(params[DUCKING_PARAM].getValue()));
 		float ducking_depth = duck.process(duck_scaling*(left + right));
 		lights[DUCKING_LIGHT].setBrightnessSmooth(ducking_depth, args.sampleTime);
 
-		float drywet = params[DRYWET_PARAM].getValue();
-		drywet += inputs[DRYWET_MOD_INPUT].getVoltage() * 0.1;
-		drywet = clamp(drywet);
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue());
 		// float rt_2mag = -6*3.32192809489*(delay_time/reverb_time);	// *log2(10)
 		float rt_2mag = -6*(delay_time/reverb_time);
 		float feedback = (1-ducking_depth)*dsp::approxExp2_taylor5(rt_2mag);
+		//simd::float_4 actual_high_gain = two_shelves.getActualHighGain();
+		//feedback /= actual_high_gain[0];
 
 		// processing signal
 		simd::float_4 v = simd::float_4(left, right, left, right);
 		
 		v = v + back_fed;
 		v = v - hp_filter.process(v);
-		//v = lp_filter.process(v);
 
-		v = high_shelf.process(v);
+		v = two_shelves.process(v);
 
 		v = diffusion1.process(v);
 		v = diffusion2.process(v);
@@ -216,7 +227,7 @@ struct Reverb : Module {
 		diffusion4 = cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS);
 	  	delay = cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
-		high_shelf = cs::HighShelf<simd::float_4>(FS);
+		two_shelves = cs::TwoShelves<simd::float_4>(FS);
 	}
 };
 
@@ -235,8 +246,9 @@ struct ReverbWidget : ModuleWidget {
 
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(23.523, 20.926)), module, Reverb::LENGTH_PARAM));
 		addParam(createParamCentered<Trimpot>(mm2px(Vec(41.495, 23.148)), module, Reverb::LENGTH_MOD_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.902, 38.234)), module, Reverb::LP_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(46.248, 48.552)), module, Reverb::HP_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.902, 38.234)), module, Reverb::TONE_HIGH_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.899, 39.85)), module, Reverb::TONE_CENTER_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(46.248, 48.552)), module, Reverb::TONE_LOW_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(19.296, 50.315)), module, Reverb::DIFF_PARAM));
 		addParam(createParamCentered<Trimpot>(mm2px(Vec(13.547, 68.21)), module, Reverb::DIFF_MOD_PARAM));
 		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(44.332, 69.447)), module, Reverb::DIFF_MODE_PARAM));
