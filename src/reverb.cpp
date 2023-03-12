@@ -8,23 +8,25 @@
 
 struct Reverb : Module {
 	enum ParamId {
-		LENGTH_PARAM,
-		LENGTH_MOD_PARAM,
-		TONE_HIGH_PARAM,
-		TONE_CENTER_PARAM,
-		TONE_LOW_PARAM,
+		SIZE_PARAM,
+		SIZE_MOD_PARAM,
+		PREDELAY_PARAM,
+		TONE_PARAM,
 		DIFF_PARAM,
 		DIFF_MOD_PARAM,
-		DIFF_MODE_PARAM,
+		MODEL_PARAM,
 		DRYWET_PARAM,
 		FEEDBACK_PARAM,
 		DUCKING_PARAM,
+		FEEDBACK_MOD_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
-		LENGTH_MOD_INPUT,
+		SIZE_MOD_INPUT,
+		TONE_MOD_INPUT,
 		DIFF_MOD_INPUT,
 		DRYWET_MOD_INPUT,
+		FEEDBACK_MOD_INPUT,
 		LEFT_INPUT,
 		RIGHT_INPUT,
 		INPUTS_LEN
@@ -35,10 +37,10 @@ struct Reverb : Module {
 		OUTPUTS_LEN
 	};
 	enum LightId {
-		MODE_1_LIGHT,
-		MODE_2_LIGHT,
-		MODE_3_LIGHT,
-		MODE_4_LIGHT,
+		MODEL1_LIGHT,
+		MODEL2_LIGHT,
+		MODEL3_LIGHT,
+		MODEL4_LIGHT,
 		DUCKING_LIGHT,
 		LIGHTS_LEN
 	};
@@ -59,6 +61,7 @@ struct Reverb : Module {
 	ReverbParameters rev_params;
 
 	float FS = 48000.0;
+	cs::DelayStage4 predelay;
 	cs::DiffusionStage diffusion1;
 	cs::DiffusionStage diffusion2;
 	cs::DiffusionStage diffusion3;
@@ -73,7 +76,8 @@ struct Reverb : Module {
 	simd::float_4 back_fed = simd::float_4::zero();
 
 	Reverb() 
-	: diffusion1(cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS)),
+	: predelay(cs::DelayStage4(simd::float_4(0.25f), FS)),
+	  diffusion1(cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS)),
 	  diffusion2(cs::DiffusionStage(rev_params.lengths[1], rev_params.normals[1], FS)),
 	  diffusion3(cs::DiffusionStage(rev_params.lengths[2], rev_params.normals[2], FS)),
 	  diffusion4(cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS)),
@@ -83,18 +87,21 @@ struct Reverb : Module {
 	  two_shelves(cs::TwoShelves<simd::float_4>(FS))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(LENGTH_PARAM, 0.f, 1.f, 0.5f, "Size");
-		configParam(LENGTH_MOD_PARAM, -1.f, 1.f, 0.f, "Size modulation depth");
-		configInput(LENGTH_MOD_INPUT, "Size modulation");
-		configParam(TONE_HIGH_PARAM, -0.99f, 0.99f, 0.f, "Tone");
-		configParam(TONE_CENTER_PARAM, std::log2(500.f), std::log2(10000.f), std::log2(500.f), "Tone center", "Hz", 2);
-		configParam(TONE_LOW_PARAM, 0.1f, 1.f, 0.9f, "Low shelf");
-		configParam(DIFF_PARAM, 0.f, 1.f, 0.f, "Diffusion");
+		configParam(SIZE_PARAM, 0.f, 1.f, 0.5f, "Size");
+		configParam(SIZE_MOD_PARAM, -1.f, 1.f, 0.f, "Size modulation depth");
+		configInput(SIZE_MOD_INPUT, "Size modulation");
+		configParam(TONE_PARAM, -0.99f, 0.99f, 0.f, "Tone");
+		configInput(TONE_MOD_INPUT, "Tone modulation");
+		configParam(PREDELAY_PARAM, 0.f, 1.f, 0.f, "Predelay");
+		configParam(DIFF_PARAM, 0.f, 0.5f, 0.f, "Diffusion");
 		configParam(DIFF_MOD_PARAM, -1.f, 1.f, 0.f, "Diffusion modulation depth");
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
-		configParam(DIFF_MODE_PARAM, 0.f, 1.f, 0.f, "Diffusion mode");
+		configParam(MODEL_PARAM, 0.f, 1.f, 0.f, "Model selector");
 		configParam(DRYWET_PARAM, 0.f, 1.f, 0.5f, "Dry-Wet");
+		configInput(DRYWET_MOD_INPUT, "Dry-Wet modulation");
 		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(200.f), std::log2(0.1f), "Reverb time", "s", 2);
+		configParam(FEEDBACK_MOD_PARAM, -1.f, 1.f, 0.f, "Reverb time modulation depth");
+		configInput(FEEDBACK_MOD_INPUT, "Reverb time modulation");
 		configParam(DUCKING_PARAM, 0.f, 1.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
@@ -111,11 +118,13 @@ struct Reverb : Module {
 		float right = inputs[RIGHT_INPUT].isConnected() ? inputs[RIGHT_INPUT].getVoltage() : left;
 
 		// setting parameters
+		float predelay_time = params[PREDELAY_PARAM].getValue();
+		predelay.setScale(0.25f*predelay_time*predelay_time*predelay_time);
 		float diff_depth = params[DIFF_PARAM].getValue();
 		float delay_rem = 1.f - diff_depth;
-		float delay_scale = params[LENGTH_PARAM].getValue();
+		float delay_scale = params[SIZE_PARAM].getValue();
 		delay_scale = delay_scale*delay_scale;
-		float delay_vpoct = dsp::approxExp2_taylor5(params[LENGTH_MOD_PARAM].getValue()*inputs[LENGTH_MOD_INPUT].getVoltage());
+		float delay_vpoct = dsp::approxExp2_taylor5(params[SIZE_MOD_PARAM].getValue()*inputs[SIZE_MOD_INPUT].getVoltage());
 		delay_scale /= delay_vpoct;
 
 		float delay_time = delay_scale;
@@ -130,14 +139,19 @@ struct Reverb : Module {
 
 		hp_filter.setFrequency(10.f);
 
-		float tone = params[TONE_HIGH_PARAM].getValue();
+		float tone = params[TONE_PARAM].getValue();
 		float high_shelf = 1.f;
 		float low_shelf = 1.f;
+		float feedback = 1.f;
 		if(tone < 0){
 			high_shelf = 1.f - tone*tone;
+			two_shelves.setParams(400.f, low_shelf, high_shelf);
 		}
 		else{
 			low_shelf = 1.f - tone*tone;
+			two_shelves.setParams(400.f, low_shelf, high_shelf);
+			auto actual_high_gain = two_shelves.getActualHighGain();
+			feedback /= actual_high_gain[0];
 		}
 		two_shelves.setParams(400.f, low_shelf, high_shelf);
 		
@@ -152,12 +166,14 @@ struct Reverb : Module {
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue());
 		// float rt_2mag = -6*3.32192809489*(delay_time/reverb_time);	// *log2(10)
 		float rt_2mag = -6*(delay_time/reverb_time);
-		float feedback = (1-ducking_depth)*dsp::approxExp2_taylor5(rt_2mag);
+		feedback *= (1-ducking_depth)*dsp::approxExp2_taylor5(rt_2mag);
 		//simd::float_4 actual_high_gain = two_shelves.getActualHighGain();
 		//feedback /= actual_high_gain[0];
 
 		// processing signal
 		simd::float_4 v = simd::float_4(left, right, left, right);
+
+		v = predelay.process(v);
 		
 		v = v + back_fed;
 		v = v - hp_filter.process(v);
@@ -195,22 +211,22 @@ struct Reverb : Module {
 	{
 		unsigned ret = loadReverbParameters(rev_params, model_index);
 		reloadProcessors();
-		lights[MODE_1_LIGHT].setBrightness(0);
-		lights[MODE_2_LIGHT].setBrightness(0);
-		lights[MODE_3_LIGHT].setBrightness(0);
-		lights[MODE_4_LIGHT].setBrightness(0);
+		lights[MODEL1_LIGHT].setBrightness(0);
+		lights[MODEL2_LIGHT].setBrightness(0);
+		lights[MODEL3_LIGHT].setBrightness(0);
+		lights[MODEL4_LIGHT].setBrightness(0);
 		switch(ret){
 		case 0:
-			lights[MODE_1_LIGHT].setBrightness(1);
+			lights[MODEL1_LIGHT].setBrightness(1);
 			break;
 		case 1:
-			lights[MODE_2_LIGHT].setBrightness(1);
+			lights[MODEL2_LIGHT].setBrightness(1);
 			break;
 		case 2:
-			lights[MODE_3_LIGHT].setBrightness(1);
+			lights[MODEL3_LIGHT].setBrightness(1);
 			break;
 		case 3:
-			lights[MODE_4_LIGHT].setBrightness(1);
+			lights[MODEL4_LIGHT].setBrightness(1);
 			break;
 		default:
 			break;
@@ -244,32 +260,34 @@ struct ReverbWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/reverb.svg")));
 
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(23.523, 20.926)), module, Reverb::LENGTH_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(41.495, 23.148)), module, Reverb::LENGTH_MOD_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.902, 38.234)), module, Reverb::TONE_HIGH_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.899, 39.85)), module, Reverb::TONE_CENTER_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(46.248, 48.552)), module, Reverb::TONE_LOW_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(19.296, 50.315)), module, Reverb::DIFF_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(13.547, 68.21)), module, Reverb::DIFF_MOD_PARAM));
-		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(44.332, 69.447)), module, Reverb::DIFF_MODE_PARAM));
-		addParam(createParamCentered<Davies1900hRedKnob>(mm2px(Vec(14.287, 88.9)), module, Reverb::DRYWET_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(45.145, 96.547)), module, Reverb::FEEDBACK_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.89, 101.899)), module, Reverb::DUCKING_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(27.351, 20.926)), module, Reverb::SIZE_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(45.323, 23.148)), module, Reverb::SIZE_MOD_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.375, 41.492)), module, Reverb::PREDELAY_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.751, 41.492)), module, Reverb::TONE_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.647, 44.659)), module, Reverb::DIFF_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(9.898, 62.554)), module, Reverb::DIFF_MOD_PARAM));
+		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(39.098, 70.055)), module, Reverb::MODEL_PARAM));
+		addParam(createParamCentered<Davies1900hRedKnob>(mm2px(Vec(11.855, 83.408)), module, Reverb::DRYWET_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(33.634, 96.547)), module, Reverb::FEEDBACK_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.379, 101.899)), module, Reverb::DUCKING_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(49.601, 102.277)), module, Reverb::FEEDBACK_MOD_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.759, 12.5)), module, Reverb::LENGTH_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.718, 68.41)), module, Reverb::DIFF_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.89, 83.143)), module, Reverb::DRYWET_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.588, 12.5)), module, Reverb::SIZE_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.857, 52.837)), module, Reverb::TONE_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.069, 62.753)), module, Reverb::DIFF_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(23.458, 77.651)), module, Reverb::DRYWET_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.866, 91.628)), module, Reverb::FEEDBACK_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.336, 118.019)), module, Reverb::LEFT_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.691, 118.019)), module, Reverb::RIGHT_INPUT));
 
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(41.269, 118.023)), module, Reverb::LEFT_OUTPUT));
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.624, 118.019)), module, Reverb::RIGHT_OUTPUT));
 
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(53.354, 60.745)), module, Reverb::MODE_1_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(53.049, 67.727)), module, Reverb::MODE_2_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(54.545, 74.583)), module, Reverb::MODE_3_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(49.212, 78.131)), module, Reverb::MODE_4_LIGHT));
-		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(31.423, 93.78)), module, Reverb::DUCKING_LIGHT));
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(47.505, 64.83)), module, Reverb::MODEL1_LIGHT));
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(52.237, 68.236)), module, Reverb::MODEL2_LIGHT));
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(47.505, 74.578)), module, Reverb::MODEL3_LIGHT));
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(53.757, 76.227)), module, Reverb::MODEL4_LIGHT));
+		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(19.912, 93.78)), module, Reverb::DUCKING_LIGHT));
 	}
 };
 
