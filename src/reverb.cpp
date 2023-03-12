@@ -56,6 +56,55 @@ struct Reverb : Module {
 		};
 	};
 
+	struct ProcessorParameters{
+		float predelay_time;
+		float diffusion_depth;
+		float delay_scale;
+		float high_shelf_gain;
+		float low_shelf_gain;
+		float feedback;
+		float dry_wet;
+		float ducking_scale;
+
+		void calculate(Reverb& p)
+		{
+			predelay_time = 0.25*dsp::cubic(p.params[PREDELAY_PARAM].getValue());
+
+			diffusion_depth = p.params[DIFF_PARAM].getValue() + dsp::cubic(p.params[DIFF_MOD_PARAM].getValue()*p.inputs[DIFF_MOD_INPUT].getVoltage()*0.1f);
+			diffusion_depth = clamp(diffusion_depth, 0.f, 0.5f);
+			float delay_rem = 1.f - diffusion_depth;
+			delay_scale = p.params[SIZE_PARAM].getValue();
+			delay_scale = delay_scale*delay_scale;
+			float delay_vpoct = dsp::approxExp2_taylor5(p.params[SIZE_MOD_PARAM].getValue()*p.inputs[SIZE_MOD_INPUT].getVoltage());
+			delay_scale /= delay_vpoct;
+			float delay_time = delay_scale;
+			diffusion_depth *= delay_scale;
+			delay_scale *= delay_rem;
+
+			float tone = p.params[TONE_PARAM].getValue() + 0.1*p.inputs[TONE_MOD_INPUT].getVoltage();
+			tone = clamp(tone, -0.99f, 0.99f);
+			high_shelf_gain = 1.f;
+			low_shelf_gain = 1.f;
+			feedback = 1.f;
+			if(tone < 0){
+				high_shelf_gain = 1.f - tone*tone;
+			}
+			else{
+				low_shelf_gain = 1.f - tone*tone;
+			}
+
+			dry_wet = p.params[DRYWET_PARAM].getValue();
+			dry_wet += p.inputs[DRYWET_MOD_INPUT].getVoltage() * 0.1;
+			dry_wet = clamp(dry_wet);
+
+			ducking_scale = (dsp::cubic(p.params[DUCKING_PARAM].getValue()));
+
+			float reverb_time = dsp::approxExp2_taylor5(p.params[FEEDBACK_PARAM].getValue() + p.params[FEEDBACK_MOD_PARAM].getValue()*p.inputs[FEEDBACK_MOD_INPUT].getVoltage());
+			feedback *= dsp::approxExp2_taylor5(-6*(delay_time/reverb_time));
+		}
+
+	};
+
 	unsigned loadReverbParameters(ReverbParameters& params, unsigned model_index);
 
 	ReverbParameters rev_params;
@@ -120,7 +169,8 @@ struct Reverb : Module {
 		// setting parameters
 		float predelay_time = params[PREDELAY_PARAM].getValue();
 		predelay.setScale(0.25f*predelay_time*predelay_time*predelay_time);
-		float diff_depth = params[DIFF_PARAM].getValue();
+		float diff_depth = params[DIFF_PARAM].getValue() + dsp::cubic(params[DIFF_MOD_PARAM].getValue()*inputs[DIFF_MOD_INPUT].getVoltage()*0.1f);
+		diff_depth = clamp(diff_depth, 0.f, 0.5f);
 		float delay_rem = 1.f - diff_depth;
 		float delay_scale = params[SIZE_PARAM].getValue();
 		delay_scale = delay_scale*delay_scale;
@@ -139,7 +189,8 @@ struct Reverb : Module {
 
 		hp_filter.setFrequency(10.f);
 
-		float tone = params[TONE_PARAM].getValue();
+		float tone = params[TONE_PARAM].getValue() + 0.1*inputs[TONE_MOD_INPUT].getVoltage();
+		tone = clamp(tone, -0.99f, 0.99f);
 		float high_shelf = 1.f;
 		float low_shelf = 1.f;
 		float feedback = 1.f;
@@ -153,7 +204,6 @@ struct Reverb : Module {
 			auto actual_high_gain = two_shelves.getActualHighGain();
 			feedback /= actual_high_gain[0];
 		}
-		two_shelves.setParams(400.f, low_shelf, high_shelf);
 		
 		float drywet = params[DRYWET_PARAM].getValue();
 		drywet += inputs[DRYWET_MOD_INPUT].getVoltage() * 0.1;
@@ -163,7 +213,7 @@ struct Reverb : Module {
 		float ducking_depth = duck.process(duck_scaling*(left + right));
 		lights[DUCKING_LIGHT].setBrightnessSmooth(ducking_depth, args.sampleTime);
 
-		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue());
+		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue() + params[FEEDBACK_MOD_PARAM].getValue()*inputs[FEEDBACK_MOD_INPUT].getVoltage());
 		// float rt_2mag = -6*3.32192809489*(delay_time/reverb_time);	// *log2(10)
 		float rt_2mag = -6*(delay_time/reverb_time);
 		feedback *= (1-ducking_depth)*dsp::approxExp2_taylor5(rt_2mag);
@@ -174,20 +224,15 @@ struct Reverb : Module {
 		simd::float_4 v = simd::float_4(left, right, left, right);
 
 		v = predelay.process(v);
-		
 		v = v + back_fed;
 		v = v - hp_filter.process(v);
-
 		v = two_shelves.process(v);
-
 		v = diffusion1.process(v);
 		v = diffusion2.process(v);
 		v = diffusion3.process(v);
 		v = diffusion4.process(v);
-
 		left = drywet*v[0] + (1-drywet)*left;
 		right = drywet*v[1] + (1-drywet)*right;
-
 		v = delay.process(v);
 		back_fed = v * simd::float_4(feedback);
 
@@ -237,6 +282,7 @@ struct Reverb : Module {
 	void reloadProcessors(void)
 	{
 		back_fed = simd::float_4::zero();
+		predelay = cs::DelayStage4(simd::float_4(0.25), FS);
 		diffusion1 = cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS);
 		diffusion2 = cs::DiffusionStage(rev_params.lengths[1], rev_params.normals[1], FS);
 		diffusion3 = cs::DiffusionStage(rev_params.lengths[2], rev_params.normals[2], FS);
