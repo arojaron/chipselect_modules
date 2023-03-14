@@ -31,5 +31,4 @@ struct OnePole {
         return z;
     }
 };
-
 }

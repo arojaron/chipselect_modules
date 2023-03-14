@@ -14,7 +14,7 @@ struct Reverb : Module {
 		TONE_PARAM,
 		DIFF_PARAM,
 		DIFF_MOD_PARAM,
-		MODEL_PARAM,
+		MODEL_SWITCH_PARAM,
 		DRYWET_PARAM,
 		FEEDBACK_PARAM,
 		DUCKING_PARAM,
@@ -54,11 +54,7 @@ struct Reverb : Module {
 			simd::float_4(1, 1, 1, 1),
 			simd::float_4(1, 1, 1, 1)
 		};
-	};
-
-	unsigned loadReverbParameters(ReverbParameters& params, unsigned model_index);
-
-	ReverbParameters rev_params;
+	} rev_params;
 
 	float FS = 48000.0;
 	cs::DelayStage4 predelay;
@@ -95,7 +91,7 @@ struct Reverb : Module {
 		configParam(DIFF_PARAM, 0.f, 0.5f, 0.f, "Diffusion");
 		configParam(DIFF_MOD_PARAM, -1.f, 1.f, 0.f, "Diffusion modulation depth");
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
-		configParam(MODEL_PARAM, 0.f, 1.f, 0.f, "Model selector");
+		configParam(MODEL_SWITCH_PARAM, 0.f, 1.f, 0.f, "Model selector");
 		configParam(DRYWET_PARAM, 0.f, 1.f, 0.5f, "Dry-Wet");
 		configInput(DRYWET_MOD_INPUT, "Dry-Wet modulation");
 		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(200.f), std::log2(0.1f), "Reverb time", "s", 2);
@@ -109,7 +105,6 @@ struct Reverb : Module {
 
 		model_index = loadModel(model_index);
 		hp_filter.setFrequency(10.f);
-
 	}
 
 	struct ProcessorParameters{
@@ -118,6 +113,7 @@ struct Reverb : Module {
 		float delay_scale;
 		float high_shelf_gain;
 		float low_shelf_gain;
+		float const shelving_center = 400.f;
 		float feedback;
 		float dry_wet;
 		float ducking_depth;
@@ -175,7 +171,7 @@ struct Reverb : Module {
 		diffusion3.setScale(p.diffusion_depth);
 		diffusion4.setScale(p.diffusion_depth);
 		delay.setScale(p.delay_scale);
-		two_shelves.setParams(400.f, p.low_shelf_gain, p.high_shelf_gain);
+		two_shelves.setParams(p.shelving_center, p.low_shelf_gain, p.high_shelf_gain);
 
 		lights[DUCKING_LIGHT].setBrightnessSmooth(p.ducking_depth, args.sampleTime);
 
@@ -207,6 +203,7 @@ struct Reverb : Module {
 		model_index = loadModel(++model_index);
 	}
 
+	unsigned loadReverbParameters(ReverbParameters& params, unsigned model_index);
 	unsigned loadModel(unsigned index)
 	{
 		unsigned ret = loadReverbParameters(rev_params, model_index);
@@ -244,10 +241,25 @@ struct Reverb : Module {
 		diffusion4 = cs::DiffusionStage(rev_params.lengths[3], rev_params.normals[3], FS);
 	  	delay = cs::DiffusionStage(rev_params.lengths[4], rev_params.normals[4], FS);
 		hp_filter = cs::OnePole<simd::float_4>(FS);
+		hp_filter.setFrequency(10.f);
 		two_shelves = cs::TwoShelves<simd::float_4>(FS);
 		duck = cs::TransientDetector(FS);
+	}
 
-		hp_filter.setFrequency(10.f);
+	json_t* dataToJson() override
+	{
+		json_t* root = json_object();
+		json_object_set_new(root, "model", json_integer(model_index));
+		return root;
+	}
+
+	void dataFromJson(json_t* root) override
+	{
+		json_t* model_json = json_object_get(root, "model");
+		if(model_json){
+			model_index = json_integer_value(model_json);
+			model_index = loadModel(model_index);
+		}
 	}
 };
 
@@ -270,7 +282,7 @@ struct ReverbWidget : ModuleWidget {
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.751, 41.492)), module, Reverb::TONE_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.647, 44.659)), module, Reverb::DIFF_PARAM));
 		addParam(createParamCentered<Trimpot>(mm2px(Vec(9.898, 62.554)), module, Reverb::DIFF_MOD_PARAM));
-		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(39.098, 70.055)), module, Reverb::MODEL_PARAM));
+		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(39.098, 70.055)), module, Reverb::MODEL_SWITCH_PARAM));
 		addParam(createParamCentered<Davies1900hRedKnob>(mm2px(Vec(11.855, 83.408)), module, Reverb::DRYWET_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(33.634, 96.547)), module, Reverb::FEEDBACK_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.379, 101.899)), module, Reverb::DUCKING_PARAM));
@@ -300,7 +312,7 @@ Model* modelReverb = createModel<Reverb, ReverbWidget>("Reverb");
 
 unsigned Reverb::loadReverbParameters(ReverbParameters& params, unsigned model_index)
 {
-	std::string params_filename = asset::user("chipselect_reverb_constants.json");
+	std::string params_filename = asset::plugin(pluginInstance, "src/reverb_constants.json");
 	
 	FILE* file = fopen(params_filename.c_str(), "r");
 	json_error_t err;

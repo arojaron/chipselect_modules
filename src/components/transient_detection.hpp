@@ -1,21 +1,11 @@
 #pragma once
 
 #include "rack.hpp"
+
 #include "one_pole.hpp"
+#include "sigmoid.hpp"
 
 namespace cs{
-
-inline float sigmoid(float signal)
-{
-    if(signal > 1.0){
-        return 1.0;
-    }
-    if(signal < 0.0){
-        return 0.0;
-    }
-
-    return signal*signal*(3.0 - 2.0*signal);
-}
 
 struct TransientDetector{
     float Ts;

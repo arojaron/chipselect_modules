@@ -1,7 +1,10 @@
 #pragma once
 
+#include "rack.hpp"
+
 #include "delay_granular.hpp"
 #include "matrix_mixer.hpp"
+#include "sigmoid.hpp"
 
 namespace cs{
 

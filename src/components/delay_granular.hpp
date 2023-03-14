@@ -56,16 +56,6 @@ public:
     }
 };
 
-inline float xfade(float A, float B, float index)
-{
-    if(index >= 1.f){
-        return A;
-    }
-    float A_coef = index*index*(3.f - 2.f*index);   // mixing up
-    float B_coef = 1.f - A_coef;                    // mixing down
-    return A*A_coef + B*B_coef;
-}
-
 struct GrainClock{
 private:
     unsigned period;
