@@ -150,7 +150,7 @@ struct Reverb : Module {
 		p.dry_wet += inputs[DRYWET_MOD_INPUT].getVoltage() * 0.1;
 		p.dry_wet = clamp(p.dry_wet);
 
-		float ducking_scale = (dsp::cubic(params[DUCKING_PARAM].getValue()));
+		float ducking_scale = (dsp::quintic(params[DUCKING_PARAM].getValue()));
 		p.ducking_depth = duck.process(ducking_scale*(in_signal[0] + in_signal[1]));
 
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue() + params[FEEDBACK_MOD_PARAM].getValue()*inputs[FEEDBACK_MOD_INPUT].getVoltage());

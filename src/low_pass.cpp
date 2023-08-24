@@ -53,7 +53,7 @@ struct LowPass : Module {
 		float freq_knob = params[FREQUENCY_PARAM].getValue();
 		float vpoct = inputs[VPOCT_INPUT].getVoltage();
 		float freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
-		float f_mod_depth = 5000.f * args.sampleTime * dsp::quintic(params[F_MOD_DEPTH_PARAM].getValue());
+		float f_mod_depth = 5000.f * args.sampleTime * dsp::cubic(params[F_MOD_DEPTH_PARAM].getValue());
 		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
 		float cutoff_param = freq_tuning + f_mod_depth * f_mod;
 
