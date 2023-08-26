@@ -275,7 +275,7 @@ struct ReverbWidget : ModuleWidget {
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/reverb.svg")));
 
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(17.784, 17.78)), module, Reverb::SIZE_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.341, 20.321)), module, Reverb::TONE_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.341, 21.582)), module, Reverb::TONE_PARAM));
 		addParam(createParamCentered<Trimpot>(mm2px(Vec(33.02, 22.848)), module, Reverb::SIZE_MOD_PARAM));
 		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(50.8, 43.18)), module, Reverb::MODEL_SWITCH_PARAM));
 		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(17.784, 45.726)), module, Reverb::DIFF_PARAM));
@@ -287,7 +287,7 @@ struct ReverbWidget : ModuleWidget {
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.56, 99.06)), module, Reverb::DRY_PARAM));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.34, 99.068)), module, Reverb::WET_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.96, 12.704)), module, Reverb::TONE_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.96, 13.965)), module, Reverb::TONE_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.02, 15.236)), module, Reverb::SIZE_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.018, 43.18)), module, Reverb::DIFF_MOD_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(55.878, 66.04)), module, Reverb::FEEDBACK_MOD_INPUT));
