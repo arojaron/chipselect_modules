@@ -24,6 +24,12 @@
       "name": "LowPass",
       "description": "",
       "tags": []
+    },
+    {
+      "slug": "HighPass",
+      "name": "HighPass",
+      "description": "",
+      "tags": []
     }
   ]
 }

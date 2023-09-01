@@ -8,7 +8,7 @@
    version="1.1"
    id="svg5"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
-   sodipodi:docname="low_pass.svg"
+   sodipodi:docname="high_pass.svg"
    xml:space="preserve"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -685,7 +685,7 @@
      id="layer4"
      inkscape:label="frame"
      style="display:inline;fill:#916f6f"><rect
-       style="fill:#916f6f;stroke-width:0.244955"
+       style="fill:#6f8a91;stroke-width:0.244955"
        id="rect8983"
        width="30.48"
        height="128.5"
