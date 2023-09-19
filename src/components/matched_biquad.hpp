@@ -59,7 +59,7 @@ struct LowPass {
     }
 
     T process(T signal)
-    {        
+    {
         x[2] = x[1];
         x[1] = x[0];
         re1[1] = re1[0];

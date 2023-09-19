@@ -30,6 +30,12 @@
       "name": "HighPass",
       "description": "",
       "tags": []
+    },
+    {
+      "slug": "TNT",
+      "name": "TNT",
+      "description": "",
+      "tags": []
     }
   ]
 }

@@ -124,7 +124,7 @@ struct Reverb : Module {
 
 	void calculateProcessorParameters(simd::float_4 const in_signal)
 	{
-		p.predelay_time = 0.25*dsp::cubic(params[PREDELAY_PARAM].getValue());
+		p.predelay_time = dsp::cubic(params[PREDELAY_PARAM].getValue());
 
 		p.diffusion_depth = params[DIFF_PARAM].getValue() + dsp::cubic(params[DIFF_MOD_PARAM].getValue()*inputs[DIFF_MOD_INPUT].getVoltage()*0.1f);
 		p.diffusion_depth = clamp(p.diffusion_depth, 0.f, 0.5f);
@@ -141,7 +141,6 @@ struct Reverb : Module {
 		tone = clamp(tone, -0.99f, 0.99f);
 		p.high_shelf_gain = 1.f;
 		p.low_shelf_gain = 1.f;
-		p.feedback = 1.f;
 		if(tone < 0){
 			p.high_shelf_gain = 1.f - tone*tone;
 		}
@@ -160,7 +159,7 @@ struct Reverb : Module {
 		p.ducking_depth = duck.process(ducking_scale*(in_signal[0] + in_signal[1]));
 
 		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue() + params[FEEDBACK_MOD_PARAM].getValue()*inputs[FEEDBACK_MOD_INPUT].getVoltage());
-		p.feedback *= (1.f - p.ducking_depth) * dsp::approxExp2_taylor5(-6*(delay_time/reverb_time));
+		p.feedback = (1.f - p.ducking_depth) * std::exp2(-6.f*(delay_time/reverb_time));
 	}
 
 	void process(const ProcessArgs& args) override
@@ -232,7 +231,7 @@ struct Reverb : Module {
 	void reloadProcessors(void)
 	{
 		back_fed = simd::float_4::zero();
-		predelay = cs::DelayStage4(simd::float_4(0.25), FS);
+		predelay = cs::DelayStage4(simd::float_4(0.25f), FS);
 		diffusion1 = cs::DiffusionStage(rev_params.lengths[0], rev_params.normals[0], FS);
 		diffusion2 = cs::DiffusionStage(rev_params.lengths[1], rev_params.normals[1], FS);
 		diffusion3 = cs::DiffusionStage(rev_params.lengths[2], rev_params.normals[2], FS);

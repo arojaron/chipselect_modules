@@ -1,8 +1,10 @@
 #include "plugin.hpp"
 
 #include "components/matched_biquad.hpp"
+#include "components/simple_svf.hpp"
 #include "components/tuned_envelope.hpp"
 
+#include "components/sigmoid.hpp"
 
 struct LowPass : Module {
 	enum ParamId {
@@ -33,7 +35,7 @@ struct LowPass : Module {
 	dsp::BooleanTrigger ping_trigger;
 
 	LowPass()
-	: filter(cs::LowPass<float>(48000))
+	: filter(cs::LowPass<float>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(55.f), "Frequency", "Hz", 2);
@@ -57,12 +59,12 @@ struct LowPass : Module {
 		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
 		float cutoff_param = freq_tuning + f_mod_depth * f_mod;
 
-		float q_knob = dsp::cubic(params[Q_PARAM].getValue());
+		float q_knob = dsp::quintic(params[Q_PARAM].getValue());
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
 		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
 		float reso_param = q_knob + q_mod_depth * q_mod;
-
-		reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 100.f);
+		//reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 100.f);
+		reso_param *= cutoff_param;
 		
 		filter.setParams(cutoff_param, reso_param);
 

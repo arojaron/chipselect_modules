@@ -2,6 +2,7 @@
 
 #include "components/matched_biquad.hpp"
 #include "components/tuned_envelope.hpp"
+#include "components/one_pole.hpp"
 
 
 struct HighPass : Module {
@@ -57,11 +58,10 @@ struct HighPass : Module {
 		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
 		float cutoff_param = freq_tuning + f_mod_depth * f_mod;
 
-		float q_knob = dsp::cubic(params[Q_PARAM].getValue());
+		float q_knob = dsp::quintic(params[Q_PARAM].getValue());
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
 		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
 		float reso_param = q_knob + q_mod_depth * q_mod;
-
 		reso_param *= freq_tuning;
 		
 		filter.setParams(cutoff_param, reso_param);
