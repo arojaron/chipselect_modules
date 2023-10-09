@@ -1,12 +1,11 @@
 #include "plugin.hpp"
 
-#include "components/matched_biquad.hpp"
 #include "components/simple_svf.hpp"
 #include "components/tuned_envelope.hpp"
 
 #include "components/sigmoid.hpp"
 
-struct LowPass : Module {
+struct Filter : Module {
 	enum ParamId {
 		FREQUENCY_PARAM,
 		F_MOD_DEPTH_PARAM,
@@ -30,12 +29,12 @@ struct LowPass : Module {
 		LIGHTS_LEN
 	};
 
-	cs::LowPass<float> filter;
+	cs::SimpleSvf filter;
 	cs::TunedDecayEnvelope<float> ping_processor;
 	dsp::BooleanTrigger ping_trigger;
 
-	LowPass()
-	: filter(cs::LowPass<float>(48000.f))
+	Filter()
+	: filter(cs::SimpleSvf(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(55.f), "Frequency", "Hz", 2);
@@ -63,7 +62,7 @@ struct LowPass : Module {
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
 		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
 		float reso_param = q_knob + q_mod_depth * q_mod;
-		//reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 100.f);
+		reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 1000.f);
 		reso_param *= cutoff_param;
 		
 		filter.setParams(cutoff_param, reso_param);
@@ -79,29 +78,29 @@ struct LowPass : Module {
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		filter = cs::LowPass<float>(e.sampleRate);
+		filter = cs::SimpleSvf(e.sampleRate);
 	}
 };
 
-struct LowPassWidget : ModuleWidget {
-	LowPassWidget(LowPass* module) {
+struct FilterWidget : ModuleWidget {
+	FilterWidget(Filter* module) {
 		setModule(module);
-		setPanel(createPanel(asset::plugin(pluginInstance, "res/low_pass.svg")));
+		setPanel(createPanel(asset::plugin(pluginInstance, "res/filter.svg")));
 
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 15.856)), module, LowPass::FREQUENCY_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 34.237)), module, LowPass::F_MOD_DEPTH_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 63.908)), module, LowPass::Q_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 82.289)), module, LowPass::Q_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 15.856)), module, Filter::FREQUENCY_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 34.237)), module, Filter::F_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 63.908)), module, Filter::Q_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 82.289)), module, Filter::Q_MOD_DEPTH_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 34.237)), module, LowPass::F_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 82.289)), module, LowPass::Q_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 106.757)), module, LowPass::VPOCT_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.873, 106.757)), module, LowPass::PING_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 118.019)), module, LowPass::FILTER_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 34.237)), module, Filter::F_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 82.289)), module, Filter::Q_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 106.757)), module, Filter::VPOCT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.873, 106.757)), module, Filter::PING_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 118.019)), module, Filter::FILTER_INPUT));
 
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 118.019)), module, LowPass::FILTER_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 118.019)), module, Filter::FILTER_OUTPUT));
 	}
 };
 
 
-Model* modelLowPass = createModel<LowPass, LowPassWidget>("LowPass");
+Model* modelFilter = createModel<Filter, FilterWidget>("Filter");

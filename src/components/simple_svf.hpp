@@ -17,13 +17,12 @@ struct SimpleSvf {
     SimpleSvf(float FS) : Ts(1.f/FS), Flimit(0.45f*FS), g(std::tan(M_PI*100.f*Ts)), R(1.f) {}
 
     void setParams(float freq, float Q) {
-        Q = Q < 0.f ? 0.f : Q;
-        Q = Q > 1.f ? 1.f : Q;
+        Q = Q < 0.5f ? 0.5f : Q;
 
         freq = freq < 0.f ? -freq : freq;
         freq = freq > Flimit ? Flimit : freq;
 
-        R = 1.f - Q;
+        R = 1.f/Q;
         g = std::tan(M_PI*freq*Ts);
     }
 

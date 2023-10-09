@@ -20,14 +20,8 @@
       "tags": []
     },
     {
-      "slug": "LowPass",
-      "name": "LowPass",
-      "description": "",
-      "tags": []
-    },
-    {
-      "slug": "HighPass",
-      "name": "HighPass",
+      "slug": "Filter",
+      "name": "Filter",
       "description": "",
       "tags": []
     },
