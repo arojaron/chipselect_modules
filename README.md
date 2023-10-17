@@ -6,7 +6,4 @@ A reverb module based on [Geraint Luff's blogpost](https://signalsmith-audio.co.
 ## LowPass
 12 dB/Oct low pass filter with linear FM, and a pinging input
 
-## TNT
-Tone-Nonlinearity-Tone processing
-
 ...more to come
