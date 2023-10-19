@@ -17,6 +17,8 @@ struct SimpleSvf {
     float hp = 0.f;
     float bp = 0.f;
     float lp = 0.f;
+
+    float signal = 0.f;
     
     SimpleSvf(float FS) : Ts(1.f/FS), Flimit(0.45f*FS), g(std::tan(M_PI*100.f*Ts)), R(1.f) {}
 
@@ -31,6 +33,7 @@ struct SimpleSvf {
     }
 
     float process(float in) {
+        signal = in;
         hp = (in-(g + 2.f*R)*m1 - m2)/(g*g + 2.f*g*R + 1.f);
         bp = g*hp + m1;
         lp = g*bp + m2;
@@ -46,6 +49,10 @@ struct SimpleSvf {
 
     float getHighPass(void) {
         return hp;
+    }
+
+    float getAllPass(void) {
+        return 2*(hp+lp)-signal;
     }
 };
 }
