@@ -1,7 +1,6 @@
 #include "plugin.hpp"
-
 #include "components/simple_svf.hpp"
-
+#include <vector>
 
 struct Dispersion : Module {
 	enum ParamId {
@@ -26,18 +25,18 @@ struct Dispersion : Module {
 		LIGHTS_LEN
 	};
 
-	cs::SimpleSvf filter1;
-	cs::SimpleSvf filter2;
+	const unsigned M = 16;
+	std::vector<cs::SimpleSvf<float>> filter;
 
-	Dispersion() 
-	: filter1(cs::SimpleSvf(48000.f)), filter2(cs::SimpleSvf(48000.f))
+	Dispersion()
+	: filter (M, cs::SimpleSvf<float>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(55.f), "Frequency", "Hz", 2);
 		configParam(F_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "FM depth");
 		configParam(Q_PARAM, 0.f, 1.f, 0.f, "Q");
 		configParam(Q_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "Q mod. depth");
-		configParam(ORDER_PARAM, 1.f, 2.f, 1.f, "Order");
+		configParam(ORDER_PARAM, 1.f, float(M), 1.f, "Order");
 		configInput(F_MOD_INPUT, "Linear FM");
 		configInput(Q_MOD_INPUT, "Q mod.");
 		configInput(SIGNAL_INPUT, "Signal");
@@ -57,23 +56,22 @@ struct Dispersion : Module {
 		float reso_param = q_knob + q_mod_depth * q_mod;
 		reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 10.f);
 		
-		filter1.setParams(freq_param, reso_param);
-		filter2.setParams(freq_param, reso_param);
-
 		float in = inputs[SIGNAL_INPUT].getVoltage();
-
-		filter1.process(in);
-		float all1 = filter1.getAllPass();
-		filter2.process(all1);
-		float all2 = filter2.getAllPass();
-
-		outputs[SIGNAL_OUTPUT].setVoltage(all2);
+		for(auto& filt : filter) {
+			filt.setParams(freq_param, reso_param);
+			filt.process(in);
+			in = filt.getAllPass();
+		}
+		float order = params[ORDER_PARAM].getValue();
+		unsigned char order_int = (unsigned)order - 1;
+		outputs[SIGNAL_OUTPUT].setVoltage(filter[order_int].getAllPass());
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		filter1 = cs::SimpleSvf(e.sampleRate);
-		filter2 = cs::SimpleSvf(e.sampleRate);
+		for(auto& filt : filter) {
+			filt = cs::SimpleSvf<float>(e.sampleRate);
+		}
 	}
 };
 

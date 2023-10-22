@@ -4,37 +4,37 @@
 
 namespace cs{
 
+template <typename T>
 struct SimpleSvf {
 
-    float Ts;
-    float Flimit;
-    float g;
-    float R;
+    T Ts;
+    T Flimit;
+    T g;
+    T R;
 
-    float m1 = 0.f;
-    float m2 = 0.f;
+    T m1 = 0.f;
+    T m2 = 0.f;
 
-    float hp = 0.f;
-    float bp = 0.f;
-    float lp = 0.f;
+    T hp = 0.f;
+    T bp = 0.f;
+    T lp = 0.f;
 
-    float signal = 0.f;
+    T signal = 0.f;
     
-    SimpleSvf(float FS) : Ts(1.f/FS), Flimit(0.45f*FS), g(std::tan(M_PI*100.f*Ts)), R(1.f) {}
+    SimpleSvf(T FS) : Ts(T(1.f/FS)), Flimit(T(0.45f*FS)), g(simd::tan(T(M_PI*100.f)*Ts)), R(T(1.f)) {}
 
-    void setParams(float freq, float Q) {
-        Q = Q < 0.5f ? 0.5f : Q;
+    void setParams(T freq, T Q) {
+        Q = simd::ifelse(Q < 0.5f, 0.5f, Q);
+        freq = simd::ifelse(freq <= 0, -freq, freq);
+        freq = simd::ifelse(freq >= Flimit, Flimit, freq);
 
-        freq = freq < 0.f ? -freq : freq;
-        freq = freq > Flimit ? Flimit : freq;
-
-        R = 1.f/Q;
-        g = std::tan(M_PI*freq*Ts);
+        R = T(1.f)/Q;
+        g = simd::tan(T(M_PI)*freq*Ts);
     }
 
-    float process(float in) {
+    T process(T in) {
         signal = in;
-        hp = (in-(g + 2.f*R)*m1 - m2)/(g*g + 2.f*g*R + 1.f);
+        hp = (in-(g + T(2.f)*R)*m1 - m2)/(g*g + T(2.f)*g*R + T(1.f));
         bp = g*hp + m1;
         lp = g*bp + m2;
         m1 = g*hp + bp;
@@ -43,16 +43,16 @@ struct SimpleSvf {
         return lp;
     }
 
-    float getBandPass(void) {
+    T getBandPass(void) {
         return bp;
     }
 
-    float getHighPass(void) {
+    T getHighPass(void) {
         return hp;
     }
 
-    float getAllPass(void) {
-        return 2*(hp+lp)-signal;
+    T getAllPass(void) {
+        return T(2.f)*(hp+lp)-signal;
     }
 };
 }

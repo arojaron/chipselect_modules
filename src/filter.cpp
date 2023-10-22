@@ -33,14 +33,15 @@ struct Filter : Module {
 		LIGHTS_LEN
 	};
 
-	cs::SimpleSvf filter;
+	cs::SimpleSvf<float> filter;
+	cs::SimpleSvf<float> filter2;
 	cs::TunedDecayEnvelope<float> ping_processor;
 	dsp::BooleanTrigger ping_trigger;
 
 	bool reso_mode = false;
 
 	Filter()
-	: filter(cs::SimpleSvf(48000.f))
+	: filter(cs::SimpleSvf<float>(48000.f)), filter2(cs::SimpleSvf<float>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configSwitch(RESO_MODE_PARAM, 0.f, 1.f, 0.f, "Resonator mode");
@@ -62,14 +63,12 @@ struct Filter : Module {
 	{
 		reso_mode = params[RESO_MODE_PARAM].getValue() > 0.f;
 		lights[RESO_MODE_LIGHT].setBrightness(reso_mode);
-
 		float freq_knob = params[FREQUENCY_PARAM].getValue();
 		float vpoct = inputs[VPOCT_INPUT].getVoltage();
 		float freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
 		float f_mod_depth = 5000.f * args.sampleTime * dsp::cubic(params[F_MOD_DEPTH_PARAM].getValue());
 		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
 		float cutoff_param = freq_tuning + f_mod_depth * f_mod;
-
 		float q_knob = dsp::quintic(params[Q_PARAM].getValue());
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
 		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
@@ -80,15 +79,12 @@ struct Filter : Module {
 		else{
 			reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 1000.f);
 		}
-		
-		filter.setParams(cutoff_param, reso_param);
-
 		ping_processor.setFrequency(cutoff_param);
 		float ping_level = inputs[PING_INPUT].getVoltage();
 		float triggered = ping_trigger.process(0.f < ping_level);
 		float pulse = ping_level * ping_processor.process(args.sampleTime, triggered ? 1.f : 0.f);
 		float in = inputs[SIGNAL_INPUT].getVoltage();
-		
+		filter.setParams(cutoff_param, reso_param);
 		outputs[LOW_PASS_OUTPUT].setVoltage(filter.process(in + pulse));
 		outputs[BAND_PASS_OUTPUT].setVoltage(filter.getBandPass());
 		outputs[HIGH_PASS_OUTPUT].setVoltage(filter.getHighPass());
@@ -96,7 +92,8 @@ struct Filter : Module {
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		filter = cs::SimpleSvf(e.sampleRate);
+		filter = cs::SimpleSvf<float>(e.sampleRate);
+		filter2 = cs::SimpleSvf<float>(e.sampleRate);
 	}
 };
 
