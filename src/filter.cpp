@@ -3,8 +3,6 @@
 #include "components/simple_svf.hpp"
 #include "components/tuned_envelope.hpp"
 
-#include "components/sigmoid.hpp"
-
 struct Filter : Module {
 	enum ParamId {
 		FREQUENCY_PARAM,
@@ -50,7 +48,10 @@ struct Filter : Module {
 	bool reso_mode = false;
 
 	Filter()
-	: filter_base(cs::SimpleSvf<float>(48000.f)), filter_low(cs::SimpleSvf<float>(48000.f)), filter_band(cs::SimpleSvf<float>(48000.f)), filter_high(cs::SimpleSvf<float>(48000.f))
+	: filter_base(cs::SimpleSvf<float>(48000.f)), 
+	  filter_low(cs::SimpleSvf<float>(48000.f)), 
+	  filter_band(cs::SimpleSvf<float>(48000.f)), 
+	  filter_high(cs::SimpleSvf<float>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configSwitch(RESO_MODE_PARAM, 0.f, 1.f, 0.f, "Resonator mode");

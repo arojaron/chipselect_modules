@@ -25,7 +25,7 @@ struct SimpleSvf {
 
     void setParams(T freq, T Q) {
         Q = simd::ifelse(Q < 0.5f, 0.5f, Q);
-        freq = simd::ifelse(freq <= 0, -freq, freq);
+        freq = simd::ifelse(freq <= 0.f, 0.f, freq);
         freq = simd::ifelse(freq >= Flimit, Flimit, freq);
 
         R = T(1.f)/Q;
