@@ -33,15 +33,24 @@ struct Filter : Module {
 		LIGHTS_LEN
 	};
 
-	cs::SimpleSvf<float> filter;
-	cs::SimpleSvf<float> filter2;
+	enum NumOfPoles {
+		FOUR = 0,
+		TWO = 1,
+		NUM_OF_POLES_LEN
+	};
+	unsigned num_of_poles = FOUR;
+
+	cs::SimpleSvf<float> filter_base;
+	cs::SimpleSvf<float> filter_low;
+	cs::SimpleSvf<float> filter_band;
+	cs::SimpleSvf<float> filter_high;
 	cs::TunedDecayEnvelope<float> ping_processor;
 	dsp::BooleanTrigger ping_trigger;
 
 	bool reso_mode = false;
 
 	Filter()
-	: filter(cs::SimpleSvf<float>(48000.f)), filter2(cs::SimpleSvf<float>(48000.f))
+	: filter_base(cs::SimpleSvf<float>(48000.f)), filter_low(cs::SimpleSvf<float>(48000.f)), filter_band(cs::SimpleSvf<float>(48000.f)), filter_high(cs::SimpleSvf<float>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configSwitch(RESO_MODE_PARAM, 0.f, 1.f, 0.f, "Resonator mode");
@@ -57,6 +66,10 @@ struct Filter : Module {
 		configOutput(HIGH_PASS_OUTPUT, "High pass");
 		configOutput(BAND_PASS_OUTPUT, "Band pass");
 		configOutput(LOW_PASS_OUTPUT, "Low pass");
+
+		configBypass(SIGNAL_INPUT, LOW_PASS_OUTPUT);
+		configBypass(SIGNAL_INPUT, BAND_PASS_OUTPUT);
+		configBypass(SIGNAL_INPUT, HIGH_PASS_OUTPUT);
 	}
 
 	void process(const ProcessArgs& args) override
@@ -84,16 +97,58 @@ struct Filter : Module {
 		float triggered = ping_trigger.process(0.f < ping_level);
 		float pulse = ping_level * ping_processor.process(args.sampleTime, triggered ? 1.f : 0.f);
 		float in = inputs[SIGNAL_INPUT].getVoltage();
-		filter.setParams(cutoff_param, reso_param);
-		outputs[LOW_PASS_OUTPUT].setVoltage(filter.process(in + pulse));
-		outputs[BAND_PASS_OUTPUT].setVoltage(filter.getBandPass());
-		outputs[HIGH_PASS_OUTPUT].setVoltage(filter.getHighPass());
+
+		switch(num_of_poles){
+			default:
+			case FOUR:
+				reso_param = simd::sqrt(reso_param);
+				filter_base.setParams(cutoff_param, reso_param);
+				filter_base.process(in + pulse);
+				if(outputs[LOW_PASS_OUTPUT].isConnected()){
+					filter_low.setParams(cutoff_param, reso_param);
+					filter_low.process(filter_base.getLowPass());
+					outputs[LOW_PASS_OUTPUT].setVoltage(filter_low.getLowPass());
+				}
+				if(outputs[BAND_PASS_OUTPUT].isConnected()){
+					filter_band.setParams(cutoff_param, reso_param);
+					filter_band.process(2.f*filter_base.getBandPass());
+					outputs[BAND_PASS_OUTPUT].setVoltage(filter_band.getBandPass());
+				}
+				if(outputs[HIGH_PASS_OUTPUT].isConnected()){
+					filter_high.setParams(cutoff_param, reso_param);
+					filter_high.process(filter_base.getHighPass());
+					outputs[HIGH_PASS_OUTPUT].setVoltage(filter_high.getHighPass());
+				}
+			break;
+			case TWO:
+				filter_base.setParams(cutoff_param, reso_param);
+				filter_base.process(in + pulse);
+				outputs[LOW_PASS_OUTPUT].setVoltage(filter_base.getLowPass());
+				outputs[BAND_PASS_OUTPUT].setVoltage(simd::sqrt(2.f)*filter_base.getBandPass());
+				outputs[HIGH_PASS_OUTPUT].setVoltage(filter_base.getHighPass());
+			break;
+		}
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		filter = cs::SimpleSvf<float>(e.sampleRate);
-		filter2 = cs::SimpleSvf<float>(e.sampleRate);
+		filter_base = cs::SimpleSvf<float>(e.sampleRate);
+		filter_low = cs::SimpleSvf<float>(e.sampleRate);
+		filter_band = cs::SimpleSvf<float>(e.sampleRate);
+		filter_high = cs::SimpleSvf<float>(e.sampleRate);
+	}
+
+	json_t* dataToJson() override {
+		json_t* rootJ = json_object();
+		json_object_set_new(rootJ, "num_of_poles", json_integer(num_of_poles));
+		return rootJ;
+	}
+
+	void dataFromJson(json_t* rootJ) override {
+		json_t* modeJ = json_object_get(rootJ, "num_of_poles");
+		if (modeJ) {
+			num_of_poles = json_integer_value(modeJ);
+		}
 	}
 };
 
@@ -118,6 +173,30 @@ struct FilterWidget : ModuleWidget {
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 118.019)), module, Filter::LOW_PASS_OUTPUT));
 
 		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(15.24, 83.274)), module, Filter::RESO_MODE_PARAM, Filter::RESO_MODE_LIGHT));
+	}
+
+	void appendContextMenu(Menu* menu) override {
+		Filter* module = dynamic_cast<Filter*>(this->module);
+
+		menu->addChild(new MenuEntry);
+		menu->addChild(createMenuLabel("Mode"));
+
+		struct ModeItem : MenuItem {
+			Filter* module;
+			int poles;
+			void onAction(const event::Action& e) override {
+				module->num_of_poles = poles;
+			}
+		};
+
+		std::string polesNames[2] = {"Four pole", "Two pole"};
+		for (unsigned i = 0; i < Filter::NUM_OF_POLES_LEN; i++) {
+			ModeItem* modeItem = createMenuItem<ModeItem>(polesNames[i]);
+			modeItem->rightText = CHECKMARK(module->num_of_poles == i);
+			modeItem->module = module;
+			modeItem->poles = i;
+			menu->addChild(modeItem);
+		}
 	}
 };
 

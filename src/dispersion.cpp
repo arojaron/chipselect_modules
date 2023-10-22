@@ -41,6 +41,8 @@ struct Dispersion : Module {
 		configInput(Q_MOD_INPUT, "Q mod.");
 		configInput(SIGNAL_INPUT, "Signal");
 		configOutput(SIGNAL_OUTPUT, "Signal");
+
+		configBypass(SIGNAL_INPUT, SIGNAL_OUTPUT);
 	}
 
 	void process(const ProcessArgs& args) override {

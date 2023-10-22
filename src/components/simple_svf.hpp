@@ -43,6 +43,10 @@ struct SimpleSvf {
         return lp;
     }
 
+    T getLowPass(void) {
+        return lp;
+    }
+
     T getBandPass(void) {
         return bp;
     }
