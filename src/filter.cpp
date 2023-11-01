@@ -102,7 +102,7 @@ struct Filter : Module {
 		switch(num_of_poles){
 			default:
 			case FOUR:
-				reso_param = simd::sqrt(reso_param);
+				reso_param = (reso_param < 0.f) ? 0.f : simd::sqrt(reso_param);
 				filter_base.setParams(cutoff_param, reso_param);
 				filter_base.process(in + pulse);
 				if(outputs[LOW_PASS_OUTPUT].isConnected()){
