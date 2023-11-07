@@ -273,34 +273,34 @@ struct ReverbWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/reverb.svg")));
 
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(17.784, 17.78)), module, Reverb::SIZE_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.341, 21.582)), module, Reverb::TONE_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(33.02, 22.848)), module, Reverb::SIZE_MOD_PARAM));
-		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(50.8, 43.18)), module, Reverb::MODEL_SWITCH_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(17.784, 45.726)), module, Reverb::DIFF_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(33.018, 50.792)), module, Reverb::DIFF_MOD_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(40.64, 68.571)), module, Reverb::FEEDBACK_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.32, 72.411)), module, Reverb::DUCKING_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(55.878, 73.652)), module, Reverb::FEEDBACK_MOD_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(17.78, 99.06)), module, Reverb::PREDELAY_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.56, 99.06)), module, Reverb::DRY_PARAM));
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.34, 99.068)), module, Reverb::WET_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.243, 19.05)), module, Reverb::SIZE_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(50.8, 22.852)), module, Reverb::TONE_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(30.479, 24.118)), module, Reverb::SIZE_MOD_PARAM));
+		addParam(createParamCentered<DiffModeButton>(mm2px(Vec(48.259, 43.18)), module, Reverb::MODEL_SWITCH_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.243, 45.726)), module, Reverb::DIFF_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(30.477, 50.792)), module, Reverb::DIFF_MOD_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(38.099, 67.31)), module, Reverb::FEEDBACK_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(17.779, 71.15)), module, Reverb::DUCKING_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(53.337, 72.391)), module, Reverb::FEEDBACK_MOD_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(15.239, 95.25)), module, Reverb::PREDELAY_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(33.019, 95.25)), module, Reverb::DRY_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(50.799, 95.258)), module, Reverb::WET_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.96, 13.965)), module, Reverb::TONE_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.02, 15.236)), module, Reverb::SIZE_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.018, 43.18)), module, Reverb::DIFF_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(55.878, 66.04)), module, Reverb::FEEDBACK_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.18, 91.453)), module, Reverb::DRY_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.96, 91.453)), module, Reverb::WET_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.162, 114.294)), module, Reverb::LEFT_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.321, 114.294)), module, Reverb::RIGHT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(58.419, 15.235)), module, Reverb::TONE_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.479, 16.506)), module, Reverb::SIZE_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.477, 43.18)), module, Reverb::DIFF_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.337, 64.779)), module, Reverb::FEEDBACK_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.639, 87.643)), module, Reverb::DRY_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(58.419, 87.643)), module, Reverb::WET_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.698, 110.484)), module, Reverb::LEFT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.857, 110.484)), module, Reverb::RIGHT_INPUT));
 
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.802, 114.296)), module, Reverb::LEFT_OUTPUT));
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(60.961, 114.296)), module, Reverb::RIGHT_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(43.179, 110.486)), module, Reverb::LEFT_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(53.338, 110.486)), module, Reverb::RIGHT_OUTPUT));
 
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(58.288, 44.59)), module, Reverb::MODEL1_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(63.404, 44.59)), module, Reverb::MODEL2_LIGHT));
-		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(27.936, 66.04)), module, Reverb::DUCKING_LIGHT));
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(55.748, 44.59)), module, Reverb::MODEL1_LIGHT));
+		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(60.863, 44.59)), module, Reverb::MODEL2_LIGHT));
+		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(25.395, 64.779)), module, Reverb::DUCKING_LIGHT));
 	}
 };
 

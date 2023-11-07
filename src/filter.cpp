@@ -10,6 +10,7 @@ struct Filter : Module {
 		Q_PARAM,
 		Q_MOD_DEPTH_PARAM,
 		RESO_MODE_PARAM,
+		DRY_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
@@ -59,6 +60,7 @@ struct Filter : Module {
 		configParam(F_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "FM depth");
 		configParam(Q_PARAM, 0.f, 1.f, 0.f, "Q");
 		configParam(Q_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "Q mod. depth");
+		configParam(DRY_PARAM, 0.f, 1.f, 0.f, "Dry mix");
 		configInput(F_MOD_INPUT, "Linear FM");
 		configInput(VPOCT_INPUT, "V/Oct");
 		configInput(PING_INPUT, "Ping");
@@ -99,6 +101,8 @@ struct Filter : Module {
 		float pulse = ping_level * ping_processor.process(args.sampleTime, triggered ? 1.f : 0.f);
 		float in = inputs[SIGNAL_INPUT].getVoltage();
 
+		float dry = params[DRY_PARAM].getValue();
+
 		switch(num_of_poles){
 			default:
 			case FOUR:
@@ -108,25 +112,25 @@ struct Filter : Module {
 				if(outputs[LOW_PASS_OUTPUT].isConnected()){
 					filter_low.setParams(cutoff_param, reso_param);
 					filter_low.process(filter_base.getLowPass());
-					outputs[LOW_PASS_OUTPUT].setVoltage(filter_low.getLowPass());
+					outputs[LOW_PASS_OUTPUT].setVoltage(filter_low.getLowPass() + dry*in);
 				}
 				if(outputs[BAND_PASS_OUTPUT].isConnected()){
 					filter_band.setParams(cutoff_param, reso_param);
 					filter_band.process(2.f*filter_base.getBandPass());
-					outputs[BAND_PASS_OUTPUT].setVoltage(filter_band.getBandPass());
+					outputs[BAND_PASS_OUTPUT].setVoltage(filter_band.getBandPass() + dry*in);
 				}
 				if(outputs[HIGH_PASS_OUTPUT].isConnected()){
 					filter_high.setParams(cutoff_param, reso_param);
 					filter_high.process(filter_base.getHighPass());
-					outputs[HIGH_PASS_OUTPUT].setVoltage(filter_high.getHighPass());
+					outputs[HIGH_PASS_OUTPUT].setVoltage(filter_high.getHighPass() + dry*in);
 				}
 			break;
 			case TWO:
 				filter_base.setParams(cutoff_param, reso_param);
 				filter_base.process(in + pulse);
-				outputs[LOW_PASS_OUTPUT].setVoltage(filter_base.getLowPass());
-				outputs[BAND_PASS_OUTPUT].setVoltage(simd::sqrt(2.f)*filter_base.getBandPass());
-				outputs[HIGH_PASS_OUTPUT].setVoltage(filter_base.getHighPass());
+				outputs[LOW_PASS_OUTPUT].setVoltage(filter_base.getLowPass() + dry*in);
+				outputs[BAND_PASS_OUTPUT].setVoltage(simd::sqrt(2.f)*filter_base.getBandPass() + dry*in);
+				outputs[HIGH_PASS_OUTPUT].setVoltage(filter_base.getHighPass() + dry*in);
 			break;
 		}
 	}
@@ -158,22 +162,23 @@ struct FilterWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/filter.svg")));
 
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 15.856)), module, Filter::FREQUENCY_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 34.237)), module, Filter::F_MOD_DEPTH_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 52.917)), module, Filter::Q_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 71.298)), module, Filter::Q_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 19.05)), module, Filter::FREQUENCY_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(30.476, 24.118)), module, Filter::F_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 57.15)), module, Filter::Q_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(30.474, 62.216)), module, Filter::Q_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(15.241, 93.98)), module, Filter::DRY_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 34.237)), module, Filter::F_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 71.298)), module, Filter::Q_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 95.25)), module, Filter::PING_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 106.634)), module, Filter::VPOCT_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 118.019)), module, Filter::SIGNAL_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.476, 16.506)), module, Filter::F_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.24, 39.329)), module, Filter::VPOCT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.474, 54.604)), module, Filter::Q_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.16, 110.484)), module, Filter::SIGNAL_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32, 110.464)), module, Filter::PING_INPUT));
 
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 95.25)), module, Filter::HIGH_PASS_OUTPUT));
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 106.634)), module, Filter::BAND_PASS_OUTPUT));
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 118.019)), module, Filter::LOW_PASS_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 82.509)), module, Filter::HIGH_PASS_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 96.479)), module, Filter::BAND_PASS_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 110.486)), module, Filter::LOW_PASS_OUTPUT));
 
-		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(15.24, 83.274)), module, Filter::RESO_MODE_PARAM, Filter::RESO_MODE_LIGHT));
+		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(15.24, 76.2)), module, Filter::RESO_MODE_PARAM, Filter::RESO_MODE_LIGHT));
 	}
 
 	void appendContextMenu(Menu* menu) override {
