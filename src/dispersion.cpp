@@ -27,11 +27,11 @@ struct Dispersion : Module {
 		LIGHTS_LEN
 	};
 
-	const unsigned M = 16;
-	std::vector<cs::SimpleSvf<float>> filter;
+	#define M 16
+	cs::SeriesAllpass<float, M> filter;
 
 	Dispersion()
-	: filter (M, cs::SimpleSvf<float>(48000.f))
+	: filter (cs::SeriesAllpass<float, M>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(55.f), "Frequency", "Hz", 2);
@@ -64,23 +64,17 @@ struct Dispersion : Module {
 		float reso_param = q_knob + q_mod_depth * q_mod;
 		reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 10.f);
 		
+		filter.setParams(freq_param, reso_param);
 		float in = inputs[SIGNAL_INPUT].getVoltage();
-		for(auto& filt : filter) {
-			filt.setParams(freq_param, reso_param);
-			filt.process(in);
-			in = filt.getAllPass();
-		}
-		float order = params[DEPTH_PARAM].getValue();
-		unsigned char order_int = (unsigned)order - 1;
-		float dry = params[DRY_PARAM].getValue();
-		outputs[SIGNAL_OUTPUT].setVoltage(filter[order_int].getAllPass() + dry*inputs[SIGNAL_INPUT].getVoltage());
+		unsigned char depth = (unsigned)params[DEPTH_PARAM].getValue();
+		filter.process(in, depth);
+		float dry_level = params[DRY_PARAM].getValue();
+		outputs[SIGNAL_OUTPUT].setVoltage(filter.getAllPass(depth) + dry_level * in);
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		for(auto& filt : filter) {
-			filt = cs::SimpleSvf<float>(e.sampleRate);
-		}
+		filter = cs::SeriesAllpass<float, M>(e.sampleRate);
 	}
 };
 
