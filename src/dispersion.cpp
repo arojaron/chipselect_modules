@@ -8,11 +8,13 @@ struct Dispersion : Module {
 		F_MOD_DEPTH_PARAM,
 		Q_PARAM,
 		Q_MOD_DEPTH_PARAM,
-		ORDER_PARAM,
+		DEPTH_PARAM,
+		DRY_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
 		F_MOD_INPUT,
+		VPOCT_INPUT,
 		Q_MOD_INPUT,
 		SIGNAL_INPUT,
 		INPUTS_LEN
@@ -36,18 +38,22 @@ struct Dispersion : Module {
 		configParam(F_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "FM depth");
 		configParam(Q_PARAM, 0.f, 1.f, 0.f, "Q");
 		configParam(Q_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "Q mod. depth");
-		configParam(ORDER_PARAM, 1.f, float(M), 1.f, "Order");
+		configParam(DEPTH_PARAM, 1.f, float(M), 1.f, "Depth");
+		configParam(DRY_PARAM, 0.f, 1.f, 0.f, "Dry mix");
 		configInput(F_MOD_INPUT, "Linear FM");
+		configInput(VPOCT_INPUT, "V/Oct");
 		configInput(Q_MOD_INPUT, "Q mod.");
 		configInput(SIGNAL_INPUT, "Signal");
 		configOutput(SIGNAL_OUTPUT, "Signal");
+		getParamQuantity(DEPTH_PARAM)->snapEnabled = true;
 
 		configBypass(SIGNAL_INPUT, SIGNAL_OUTPUT);
 	}
 
 	void process(const ProcessArgs& args) override {
 		float freq_knob = params[FREQUENCY_PARAM].getValue();
-		float freq_tuning = dsp::approxExp2_taylor5(freq_knob);
+		float vpoct = inputs[VPOCT_INPUT].getVoltage();
+		float freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
 		float f_mod_depth = 5000.f * args.sampleTime * dsp::cubic(params[F_MOD_DEPTH_PARAM].getValue());
 		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
 		float freq_param = freq_tuning + f_mod_depth * f_mod;
@@ -64,9 +70,10 @@ struct Dispersion : Module {
 			filt.process(in);
 			in = filt.getAllPass();
 		}
-		float order = params[ORDER_PARAM].getValue();
+		float order = params[DEPTH_PARAM].getValue();
 		unsigned char order_int = (unsigned)order - 1;
-		outputs[SIGNAL_OUTPUT].setVoltage(filter[order_int].getAllPass());
+		float dry = params[DRY_PARAM].getValue();
+		outputs[SIGNAL_OUTPUT].setVoltage(filter[order_int].getAllPass() + dry*inputs[SIGNAL_INPUT].getVoltage());
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
@@ -83,17 +90,19 @@ struct DispersionWidget : ModuleWidget {
 		setModule(module);
 		setPanel(createPanel(asset::plugin(pluginInstance, "res/dispersion.svg")));
 
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 15.856)), module, Dispersion::FREQUENCY_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 31.731)), module, Dispersion::F_MOD_DEPTH_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 52.917)), module, Dispersion::Q_PARAM));
-		addParam(createParamCentered<Trimpot>(mm2px(Vec(20.873, 68.792)), module, Dispersion::Q_MOD_DEPTH_PARAM));
-		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 89.958)), module, Dispersion::ORDER_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 19.05)), module, Dispersion::FREQUENCY_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(30.476, 24.118)), module, Dispersion::F_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.24, 57.15)), module, Dispersion::Q_PARAM));
+		addParam(createParamCentered<Trimpot>(mm2px(Vec(30.474, 62.216)), module, Dispersion::Q_MOD_DEPTH_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.32, 81.28)), module, Dispersion::DEPTH_PARAM));
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.321, 99.06)), module, Dispersion::DRY_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 31.731)), module, Dispersion::F_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 68.792)), module, Dispersion::Q_MOD_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.607, 118.019)), module, Dispersion::SIGNAL_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.476, 16.506)), module, Dispersion::F_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.24, 39.329)), module, Dispersion::VPOCT_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.474, 54.604)), module, Dispersion::Q_MOD_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.16, 110.484)), module, Dispersion::SIGNAL_INPUT));
 
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(20.873, 118.019)), module, Dispersion::SIGNAL_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 110.486)), module, Dispersion::SIGNAL_OUTPUT));
 	}
 };
 
