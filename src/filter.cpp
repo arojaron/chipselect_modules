@@ -178,7 +178,7 @@ struct FilterWidget : ModuleWidget {
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 96.479)), module, Filter::BAND_PASS_OUTPUT));
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 110.486)), module, Filter::LOW_PASS_OUTPUT));
 
-		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<YellowLight>>>(mm2px(Vec(15.24, 76.2)), module, Filter::RESO_MODE_PARAM, Filter::RESO_MODE_LIGHT));
+		addParam(createLightParamCentered<VCVLightLatch<MediumSimpleLight<WhiteLight>>>(mm2px(Vec(15.24, 76.2)), module, Filter::RESO_MODE_PARAM, Filter::RESO_MODE_LIGHT));
 	}
 
 	void appendContextMenu(Menu* menu) override {

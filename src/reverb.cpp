@@ -298,9 +298,9 @@ struct ReverbWidget : ModuleWidget {
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(43.179, 110.486)), module, Reverb::LEFT_OUTPUT));
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(53.338, 110.486)), module, Reverb::RIGHT_OUTPUT));
 
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(55.748, 44.59)), module, Reverb::MODEL1_LIGHT));
-		addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(60.863, 44.59)), module, Reverb::MODEL2_LIGHT));
-		addChild(createLightCentered<MediumLight<YellowLight>>(mm2px(Vec(25.395, 64.779)), module, Reverb::DUCKING_LIGHT));
+		addChild(createLightCentered<MediumLight<WhiteLight>>(mm2px(Vec(55.748, 44.59)), module, Reverb::MODEL1_LIGHT));
+		addChild(createLightCentered<MediumLight<WhiteLight>>(mm2px(Vec(60.863, 44.59)), module, Reverb::MODEL2_LIGHT));
+		addChild(createLightCentered<MediumLight<WhiteLight>>(mm2px(Vec(25.395, 64.779)), module, Reverb::DUCKING_LIGHT));
 	}
 };
 

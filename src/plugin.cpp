@@ -15,4 +15,5 @@ void init(Plugin* p) {
 	p->addModel(modelReverb);
 	p->addModel(modelFilter);
 	p->addModel(modelDispersion);
+	p->addModel(modelSawtooth);
 }

@@ -11,3 +11,4 @@ extern Plugin* pluginInstance;
 extern Model* modelReverb;
 extern Model* modelFilter;
 extern Model* modelDispersion;
+extern Model* modelSawtooth;
