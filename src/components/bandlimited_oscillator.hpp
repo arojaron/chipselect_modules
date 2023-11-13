@@ -6,7 +6,7 @@
 namespace cs {
 
 struct Phasor {
-public:
+private:
     float phase = 0.f;
     float phase_z = 0.f;
     float d_freq = 0.f;
@@ -25,6 +25,11 @@ public:
     void setDiscreteFrequency(float df)
     {
         d_freq = (df > 0.5f) ? 0.5f : df;
+    }
+    
+    float getDiscreteFrequency(void)
+    {
+        return d_freq;
     }
     
     void timeStep(void)
@@ -49,6 +54,10 @@ public:
         return (2.f*phase - 1.f);
     }
 
+    float getSineSample(void)
+    {
+        return std::sin(2.f*M_PI*phase);
+    }
 };
 
 #define N 32
@@ -153,15 +162,30 @@ public:
 
     void sync(float subsample_delay)
     {
-        sync_delay = subsample_delay;
-        synced = true;
+        if(0.5f > phasor.getDiscreteFrequency()){
+            sync_delay = subsample_delay;
+            synced = true;
+        }
     }
 
     float process(void)
     {
 		float ret = 5.f*(delay.timeStep(phasor.getSawSample()) + correction.timeStep());
 		phasor.timeStep();
-        if(synced){
+        if(synced && phasor.overturned()){
+            overturned = true;
+            overturn_delay = phasor.getOverturnDelay();
+            if(overturn_delay > sync_delay){
+                correction.addDiscontinuity(overturn_delay, -2.f, CorrectionBuffer::Discontinuity::FIRST_ORDER);
+            }
+            phasor.rewindPhase(sync_delay);
+            if(overturn_delay <= sync_delay){
+                correction.addDiscontinuity(sync_delay, (-1.f - phasor.getSawSample()), CorrectionBuffer::Discontinuity::FIRST_ORDER);
+            }
+            phasor.setPhase(tau*freq*sync_delay);
+            synced = false;
+        }
+        else if(synced){
             phasor.rewindPhase(sync_delay);
             correction.addDiscontinuity(sync_delay, (-1.f - phasor.getSawSample()), CorrectionBuffer::Discontinuity::FIRST_ORDER);
             phasor.setPhase(tau*freq*sync_delay);
