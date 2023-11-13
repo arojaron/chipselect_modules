@@ -34,7 +34,7 @@ struct Dispersion : Module {
 	: filter (cs::SeriesAllpass<float, M>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(55.f), "Frequency", "Hz", 2);
+		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(dsp::FREQ_C4), "Frequency", "Hz", 2);
 		configParam(F_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "FM depth");
 		configParam(Q_PARAM, 0.f, 1.f, 0.f, "Q");
 		configParam(Q_MOD_DEPTH_PARAM, -1.f, 1.f, 0.f, "Q mod. depth");

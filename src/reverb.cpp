@@ -88,7 +88,7 @@ struct Reverb : Module {
 		configParam(TONE_PARAM, -0.99f, 0.99f, 0.f, "Tone");
 		configInput(TONE_MOD_INPUT, "Tone modulation");
 		configParam(PREDELAY_PARAM, 0.f, 1.f, 0.f, "Predelay");
-		configParam(DIFF_PARAM, 0.f, 0.5f, 0.f, "Diffusion");
+		configParam(DIFF_PARAM, 0.f, 1.f, 0.5f, "Diffusion");
 		configParam(DIFF_MOD_PARAM, -1.f, 1.f, 0.f, "Diffusion modulation depth");
 		configInput(DIFF_MOD_INPUT, "Diffusion modulation");
 		configParam(MODEL_SWITCH_PARAM, 0.f, 1.f, 0.f, "Model selector");
