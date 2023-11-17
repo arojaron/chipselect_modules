@@ -96,9 +96,9 @@ struct Reverb : Module {
 		configParam(WET_PARAM, 0.f, 1.f, 0.5f, "Wet level");
 		configInput(DRY_MOD_INPUT, "Dry modulation");
 		configInput(WET_MOD_INPUT, "Wet modulation");
-		configParam(FEEDBACK_PARAM, std::log2(0.1f), std::log2(200.f), std::log2(5.f), "Reverb time", "s", 2);
-		configParam(FEEDBACK_MOD_PARAM, -1.f, 1.f, 0.f, "Reverb time modulation depth");
-		configInput(FEEDBACK_MOD_INPUT, "Reverb time modulation");
+		configParam(FEEDBACK_PARAM, 0.f, 1.f, 0.f, "Feedback");
+		configParam(FEEDBACK_MOD_PARAM, -1.f, 1.f, 0.f, "Feedback modulation depth");
+		configInput(FEEDBACK_MOD_INPUT, "Feedback modulation");
 		configParam(DUCKING_PARAM, 0.f, 1.f, 0.f, "Ducking");
 		configInput(LEFT_INPUT, "Left");
 		configInput(RIGHT_INPUT, "Right");
@@ -158,8 +158,18 @@ struct Reverb : Module {
 		float ducking_scale = (dsp::quintic(params[DUCKING_PARAM].getValue()));
 		p.ducking_depth = duck.process(ducking_scale*(in_signal[0] + in_signal[1]));
 
-		float reverb_time = dsp::approxExp2_taylor5(params[FEEDBACK_PARAM].getValue() + params[FEEDBACK_MOD_PARAM].getValue()*inputs[FEEDBACK_MOD_INPUT].getVoltage());
-		p.feedback = (1.f - p.ducking_depth) * std::exp2(-6.f*(delay_time/reverb_time));
+		float feedback_param = params[FEEDBACK_PARAM].getValue();
+		if(feedback_param == 0.f){
+			p.feedback = 0.f;
+		}
+		else if(feedback_param == 1.f){
+			p.feedback = 1.f;
+		}
+		else{
+			feedback_param = rescale(feedback_param, 0.f, 1.f, std::log2(0.1f), std::log2(200.f));
+			float reverb_time = dsp::approxExp2_taylor5(feedback_param + params[FEEDBACK_MOD_PARAM].getValue()*inputs[FEEDBACK_MOD_INPUT].getVoltage());
+			p.feedback = (1.f - p.ducking_depth) * std::exp2(-6.f*(delay_time/reverb_time));
+		}
 	}
 
 	void process(const ProcessArgs& args) override
