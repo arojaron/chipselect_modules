@@ -3,6 +3,8 @@
 #include "components/simple_svf.hpp"
 #include "components/tuned_envelope.hpp"
 
+using simd::float_4;
+
 struct Filter : Module {
 	enum ParamId {
 		FREQUENCY_PARAM,
@@ -39,20 +41,18 @@ struct Filter : Module {
 	};
 	unsigned num_of_poles = FOUR;
 
-	cs::SimpleSvf<float> filter_base;
-	cs::SimpleSvf<float> filter_low;
-	cs::SimpleSvf<float> filter_band;
-	cs::SimpleSvf<float> filter_high;
-	cs::TunedDecayEnvelope<float> ping_processor;
-	dsp::BooleanTrigger ping_trigger;
-
-	bool reso_mode = false;
+	cs::SimpleSvf<float_4> filter_base;
+	cs::SimpleSvf<float_4> filter_low;
+	cs::SimpleSvf<float_4> filter_band;
+	cs::SimpleSvf<float_4> filter_high;
+	cs::TriggerProcessor<float_4> ping_trigger;
+	cs::TunedDecayEnvelope<float_4> ping_envelope;
 
 	Filter()
-	: filter_base(cs::SimpleSvf<float>(48000.f)), 
-	  filter_low(cs::SimpleSvf<float>(48000.f)), 
-	  filter_band(cs::SimpleSvf<float>(48000.f)), 
-	  filter_high(cs::SimpleSvf<float>(48000.f))
+	: filter_base(cs::SimpleSvf<float_4>(48000.f)), 
+	  filter_low(cs::SimpleSvf<float_4>(48000.f)), 
+	  filter_band(cs::SimpleSvf<float_4>(48000.f)), 
+	  filter_high(cs::SimpleSvf<float_4>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configSwitch(RESO_MODE_PARAM, 0.f, 1.f, 0.f, "Resonator mode");
@@ -77,70 +77,78 @@ struct Filter : Module {
 
 	void process(const ProcessArgs& args) override
 	{
-		reso_mode = params[RESO_MODE_PARAM].getValue() > 0.f;
-		lights[RESO_MODE_LIGHT].setBrightness(reso_mode);
+		unsigned num_channels = std::max<unsigned>(inputs[SIGNAL_INPUT].getChannels(), inputs[VPOCT_INPUT].getChannels());
+		num_channels = std::max<unsigned>(num_channels, inputs[F_MOD_INPUT].getChannels());
+		num_channels = std::max<unsigned>(num_channels, inputs[Q_MOD_INPUT].getChannels());
+		num_channels = std::max<unsigned>(num_channels, inputs[PING_INPUT].getChannels());
+		num_channels = std::min<unsigned>(num_channels, 4);
+		outputs[LOW_PASS_OUTPUT].setChannels(num_channels);
+		outputs[BAND_PASS_OUTPUT].setChannels(num_channels);
+		outputs[HIGH_PASS_OUTPUT].setChannels(num_channels);
+
 		float freq_knob = params[FREQUENCY_PARAM].getValue();
-		float vpoct = inputs[VPOCT_INPUT].getVoltage();
-		float freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
+		float_4 vpoct = inputs[VPOCT_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
 		float f_mod_depth = 5000.f * args.sampleTime * dsp::cubic(params[F_MOD_DEPTH_PARAM].getValue());
-		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
-		float cutoff_param = freq_tuning + f_mod_depth * f_mod;
+		float_4 f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 cutoff_param = freq_tuning + f_mod_depth * f_mod;
 		float q_knob = dsp::quintic(params[Q_PARAM].getValue());
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
-		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
-		float reso_param = q_knob + q_mod_depth * q_mod;
+		float_4 q_mod = 0.1f * inputs[Q_MOD_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 reso_param = float_4(q_knob + q_mod_depth * q_mod);
+
+		bool reso_mode = params[RESO_MODE_PARAM].getValue() > 0.f;
+		lights[RESO_MODE_LIGHT].setBrightness(reso_mode);
 		if(reso_mode){
 			reso_param *= 10.f*freq_tuning;
 		}
 		else{
 			reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 1000.f);
 		}
-		ping_processor.setFrequency(cutoff_param);
-		float ping_level = inputs[PING_INPUT].getVoltage();
-		float triggered = ping_trigger.process(0.f < ping_level);
-		float pulse = ping_level * ping_processor.process(args.sampleTime, triggered ? 1.f : 0.f);
-		float in = inputs[SIGNAL_INPUT].getVoltage();
-
-		float dry = params[DRY_PARAM].getValue();
+		ping_envelope.setFrequency(cutoff_param);
+		float_4 ping_level = inputs[PING_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 pulse = ping_level * ping_envelope.process(args.sampleTime, ping_trigger.process(ping_level));
+		float_4 in = inputs[SIGNAL_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 dry = float_4(params[DRY_PARAM].getValue());
 
 		switch(num_of_poles){
 			default:
 			case FOUR:
-				reso_param = (reso_param < 0.f) ? 0.f : simd::sqrt(reso_param);
+				reso_param = simd::ifelse(reso_param < 0.f, 0.f, simd::sqrt(reso_param));
 				filter_base.setParams(cutoff_param, reso_param);
 				filter_base.process(in + pulse);
 				if(outputs[LOW_PASS_OUTPUT].isConnected()){
 					filter_low.setParams(cutoff_param, reso_param);
 					filter_low.process(filter_base.getLowPass());
-					outputs[LOW_PASS_OUTPUT].setVoltage(filter_low.getLowPass() + dry*in);
+					outputs[LOW_PASS_OUTPUT].setVoltageSimd<float_4>(filter_low.getLowPass() + dry*in, 0);
 				}
 				if(outputs[BAND_PASS_OUTPUT].isConnected()){
 					filter_band.setParams(cutoff_param, reso_param);
 					filter_band.process(2.f*filter_base.getBandPass());
-					outputs[BAND_PASS_OUTPUT].setVoltage(filter_band.getBandPass() + dry*in);
+					outputs[BAND_PASS_OUTPUT].setVoltageSimd<float_4>(filter_band.getBandPass() + dry*in, 0);
 				}
 				if(outputs[HIGH_PASS_OUTPUT].isConnected()){
 					filter_high.setParams(cutoff_param, reso_param);
 					filter_high.process(filter_base.getHighPass());
-					outputs[HIGH_PASS_OUTPUT].setVoltage(filter_high.getHighPass() + dry*in);
+					outputs[HIGH_PASS_OUTPUT].setVoltageSimd<float_4>(filter_high.getHighPass() + dry*in, 0);
 				}
 			break;
 			case TWO:
 				filter_base.setParams(cutoff_param, reso_param);
 				filter_base.process(in + pulse);
-				outputs[LOW_PASS_OUTPUT].setVoltage(filter_base.getLowPass() + dry*in);
-				outputs[BAND_PASS_OUTPUT].setVoltage(simd::sqrt(2.f)*filter_base.getBandPass() + dry*in);
-				outputs[HIGH_PASS_OUTPUT].setVoltage(filter_base.getHighPass() + dry*in);
+				outputs[LOW_PASS_OUTPUT].setVoltageSimd<float_4>(filter_base.getLowPass() + dry*in, 0);
+				outputs[BAND_PASS_OUTPUT].setVoltageSimd<float_4>(simd::sqrt(2.f)*filter_base.getBandPass() + dry*in, 0);
+				outputs[HIGH_PASS_OUTPUT].setVoltageSimd<float_4>(filter_base.getHighPass() + dry*in, 0);
 			break;
 		}
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		filter_base = cs::SimpleSvf<float>(e.sampleRate);
-		filter_low = cs::SimpleSvf<float>(e.sampleRate);
-		filter_band = cs::SimpleSvf<float>(e.sampleRate);
-		filter_high = cs::SimpleSvf<float>(e.sampleRate);
+		filter_base = cs::SimpleSvf<float_4>(e.sampleRate);
+		filter_low = cs::SimpleSvf<float_4>(e.sampleRate);
+		filter_band = cs::SimpleSvf<float_4>(e.sampleRate);
+		filter_high = cs::SimpleSvf<float_4>(e.sampleRate);
 	}
 
 	json_t* dataToJson() override {
