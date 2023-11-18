@@ -36,8 +36,8 @@ struct Sawtooth : Module {
 	bool fm_enabled = false;
 
 	dsp::BooleanTrigger reset_trigger;
-	cs::BandlimitedSaw modulator;
-	cs::BandlimitedSaw carrier;
+	cs::BandlimitedSaw<float> modulator;
+	cs::BandlimitedSaw<float> carrier;
 
 	Sawtooth()
 	{
@@ -78,7 +78,7 @@ struct Sawtooth : Module {
 
 			modulator.setFrequency(modulator_freq);
 			if(reset){
-				modulator.reset();
+				modulator.reset(1);
 			}
 			modulator_signal = modulator.process();
 		}
@@ -95,10 +95,10 @@ struct Sawtooth : Module {
 			float carrier_freq = dsp::approxExp2_taylor5(carrier_pitch);
 			carrier.setFrequency(carrier_freq);
 			if(reset){
-				carrier.reset();
+				carrier.reset(1);
 			}
 			else if(sync_enabled && modulator.overturned){
-				carrier.sync(modulator.overturn_delay);
+				carrier.sync(modulator.overturn_delay, 1);
 			}
 			carrier_signal = carrier.process();
 		}
