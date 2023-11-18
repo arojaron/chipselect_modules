@@ -2,7 +2,7 @@
 
 namespace cs{
 
-template <typename T = float>
+template <typename T>
 struct TriggerProcessor {
 	T state = 0.f;
 
@@ -13,7 +13,7 @@ struct TriggerProcessor {
 	}
 }; 
 
-template <typename T = float>
+template <typename T>
 struct TunedDecayEnvelope {
 	T out = 0.f;
 	T fall = 0.f;
