@@ -1,6 +1,7 @@
 #include "plugin.hpp"
 #include "components/simple_svf.hpp"
-#include <vector>
+
+using simd::float_4;
 
 struct Dispersion : Module {
 	enum ParamId {
@@ -28,10 +29,10 @@ struct Dispersion : Module {
 	};
 
 	#define M 16
-	cs::SeriesAllpass<float, M> filter;
+	cs::SeriesAllpass<float_4, M> filter;
 
 	Dispersion()
-	: filter (cs::SeriesAllpass<float, M>(48000.f))
+	: filter (cs::SeriesAllpass<float_4, M>(48000.f))
 	{
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(FREQUENCY_PARAM, std::log2(10.f), std::log2(24000.f), std::log2(dsp::FREQ_C4), "Frequency", "Hz", 2);
@@ -51,30 +52,35 @@ struct Dispersion : Module {
 	}
 
 	void process(const ProcessArgs& args) override {
-		float freq_knob = params[FREQUENCY_PARAM].getValue();
-		float vpoct = inputs[VPOCT_INPUT].getVoltage();
-		float freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
-		float f_mod_depth = 5000.f * args.sampleTime * dsp::cubic(params[F_MOD_DEPTH_PARAM].getValue());
-		float f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getVoltage();
-		float freq_param = freq_tuning + f_mod_depth * f_mod;
+		unsigned num_channels = std::max<unsigned>(inputs[SIGNAL_INPUT].getChannels(), inputs[VPOCT_INPUT].getChannels());
+		num_channels = std::max<unsigned>(num_channels, inputs[F_MOD_INPUT].getChannels());
+		num_channels = std::max<unsigned>(num_channels, inputs[Q_MOD_INPUT].getChannels());
+		num_channels = std::min<unsigned>(num_channels, 4);
+		outputs[SIGNAL_OUTPUT].setChannels(num_channels);
 
+		float freq_knob = params[FREQUENCY_PARAM].getValue();
+		float_4 vpoct = inputs[VPOCT_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 freq_tuning = dsp::approxExp2_taylor5(freq_knob + vpoct);
+		float f_mod_depth = 5000.f * args.sampleTime * dsp::cubic(params[F_MOD_DEPTH_PARAM].getValue());
+		float_4 f_mod = args.sampleRate * 0.1f * inputs[F_MOD_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 cutoff_param = freq_tuning + f_mod_depth * f_mod;
 		float q_knob = dsp::quintic(params[Q_PARAM].getValue());
 		float q_mod_depth = dsp::cubic(params[Q_MOD_DEPTH_PARAM].getValue());
-		float q_mod = 0.1f * inputs[Q_MOD_INPUT].getVoltage();
-		float reso_param = q_knob + q_mod_depth * q_mod;
+		float_4 q_mod = 0.1f * inputs[Q_MOD_INPUT].getPolyVoltageSimd<float_4>(0);
+		float_4 reso_param = float_4(q_knob + q_mod_depth * q_mod);
 		reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 10.f);
 		
-		filter.setParams(freq_param, reso_param);
-		float in = inputs[SIGNAL_INPUT].getVoltage();
+		filter.setParams(cutoff_param, reso_param);
+		float_4 in = inputs[SIGNAL_INPUT].getPolyVoltageSimd<float_4>(0);
 		unsigned char depth = (unsigned)params[DEPTH_PARAM].getValue();
 		filter.process(in, depth);
 		float dry_level = params[DRY_PARAM].getValue();
-		outputs[SIGNAL_OUTPUT].setVoltage(filter.getAllPass(depth) + dry_level * in);
+		outputs[SIGNAL_OUTPUT].setVoltageSimd<float_4>(filter.getAllPass(depth) + dry_level * in, 0);
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		filter = cs::SeriesAllpass<float, M>(e.sampleRate);
+		filter = cs::SeriesAllpass<float_4, M>(e.sampleRate);
 	}
 };
 
