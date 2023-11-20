@@ -2,6 +2,7 @@
 
 #include "components/bandlimited_oscillator.hpp"
 
+using namespace simd;
 
 struct Sawtooth : Module {
 	enum ParamId {
@@ -35,12 +36,11 @@ struct Sawtooth : Module {
 	bool sync_enabled = false;
 	bool fm_enabled = false;
 
-	dsp::BooleanTrigger reset_trigger;
-	cs::BandlimitedSaw modulator;
-	cs::BandlimitedSaw carrier;
+	dsp::BooleanTrigger reset_trigger[4];
+	cs::BandlimitedSaw modulator[4];
+	cs::BandlimitedSaw carrier[4];
 
-	Sawtooth()
-	{
+	Sawtooth() {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 		configParam(MODULATOR_OCT_PARAM, -5.f, 5.f, 0.f, "Modulator octave");
 		getParamQuantity(MODULATOR_OCT_PARAM)->snapEnabled = true;
@@ -60,57 +60,75 @@ struct Sawtooth : Module {
 	}
 
 	void process(const ProcessArgs& args) override {
-		float modulator_signal = 0.f;
-		float carrier_signal = 0.f;
+		unsigned num_channels = std::max<unsigned>(inputs[MODULATOR_VPOCT_INPUT].getChannels(), inputs[CARRIER_VPOCT_INPUT].getChannels());
+		num_channels = std::max<unsigned>(num_channels, inputs[RESET_INPUT].getChannels());
+		num_channels = std::min<unsigned>(num_channels, 4);
+		outputs[MODULATOR_OUTPUT].setChannels(num_channels);
+		outputs[CARRIER_OUTPUT].setChannels(num_channels);
+
+		float_4 modulator_signal = 0.f;
+		float_4 carrier_signal = 0.f;
 
 		sync_enabled = params[SYNC_ENABLE_PARAM].getValue() > 0.f;
 		lights[SYNC_ENABLE_LIGHT].setBrightness(sync_enabled);
 		fm_enabled = params[FM_ENABLE_PARAM].getValue() > 0.f;
 		lights[FM_ENABLE_LIGHT].setBrightness(fm_enabled);
 
-		bool reset = reset_trigger.process(inputs[RESET_INPUT].getVoltage());
+		bool reset[4];
+		for(unsigned i = 0; i < 4; i++){
+			reset[i] = reset_trigger[i].process(inputs[RESET_INPUT].getVoltage(i));
+		}
 
 		if(outputs[MODULATOR_OUTPUT].isConnected() || sync_enabled || fm_enabled){
-			float modulator_pitch = inputs[MODULATOR_VPOCT_INPUT].getVoltage();
+			float_4 modulator_pitch = inputs[MODULATOR_VPOCT_INPUT].getPolyVoltageSimd<float_4>(0);
 			modulator_pitch +=  params[MODULATOR_OCT_PARAM].getValue();
 			modulator_pitch += params[MODULATOR_TUNE_PARAM].getValue();
-			float modulator_freq = dsp::approxExp2_taylor5(modulator_pitch);
+			float_4 modulator_freq = dsp::approxExp2_taylor5(modulator_pitch);
 
-			modulator.setFrequency(modulator_freq);
-			if(reset){
-				modulator.reset();
+			for(unsigned i = 0; i < 4; i++) {
+				modulator[i].setFrequency(modulator_freq[i]);
+				if(reset[i]){
+					modulator[i].reset();
+				}
+				modulator_signal[i] = modulator[i].process();
 			}
-			modulator_signal = modulator.process();
 		}
 		
 		if(outputs[CARRIER_OUTPUT].isConnected()){
-			float carrier_pitch = inputs[CARRIER_VPOCT_INPUT].getVoltage();
+			float_4 carrier_pitch = inputs[CARRIER_VPOCT_INPUT].getPolyVoltageSimd<float_4>(0);
 			carrier_pitch +=  params[CARRIER_OCT_PARAM].getValue();
 			carrier_pitch += params[CARRIER_TUNE_PARAM].getValue();
 			if(fm_enabled){
 				float fm_depth = params[FM_DEPTH_PARAM].getValue() + 0.1f*inputs[FM_DEPTH_MOD_INPUT].getVoltage();
-				float fm = fm_depth * modulator.getAliasedSawSample();
+				float_4 fm;
+				for(unsigned i = 0; i < 4; i++) {
+					fm[i] = fm_depth * modulator[i].getAliasedSawSample();
+				}
 				carrier_pitch += fm;
 			}
-			float carrier_freq = dsp::approxExp2_taylor5(carrier_pitch);
-			carrier.setFrequency(carrier_freq);
-			if(reset){
-				carrier.reset();
+			float_4 carrier_freq = dsp::approxExp2_taylor5(carrier_pitch);
+			for(unsigned i = 0; i < 4; i++) {
+				carrier[i].setFrequency(carrier_freq[i]);
+				if(reset[i]){
+					carrier[i].reset();
+				}
+				else if(sync_enabled && modulator[i].overturned){
+					carrier[i].sync(modulator[i].overturn_delay);
+				}
+				carrier_signal[i] = carrier[i].process();
 			}
-			else if(sync_enabled && modulator.overturned){
-				carrier.sync(modulator.overturn_delay);
-			}
-			carrier_signal = carrier.process();
 		}
 
-		outputs[MODULATOR_OUTPUT].setVoltage(modulator_signal);
-		outputs[CARRIER_OUTPUT].setVoltage(carrier_signal);
+		outputs[MODULATOR_OUTPUT].setVoltageSimd(modulator_signal, 0);
+		outputs[CARRIER_OUTPUT].setVoltageSimd(carrier_signal, 0);
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
 	{
-		modulator.setSampleTime(e.sampleTime);
-		carrier.setSampleTime(e.sampleTime);
+		for(unsigned i = 0; i < 4; i++) {
+			modulator[i].setSampleTime(e.sampleTime);
+			carrier[i].setSampleTime(e.sampleTime);
+		}
 	}
 };
 
