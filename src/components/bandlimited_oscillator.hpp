@@ -5,29 +5,30 @@
 
 namespace cs {
 
+template <typename T>
 struct Phasor {
 private:
-    float phase = 0.f;
-    float phase_z = 0.f;
-    float d_freq = 0.f;
+    T phase = 0.f;
+    T phase_z = 0.f;
+    T d_freq = 0.f;
 
 public:
-    void setPhase(float phi)
+    void setPhase(T phi, T mask)
     {
-        phase = phi;
+        phase = rack::simd::ifelse(mask, phi, phase);
     }
 
-    void rewindPhase(float subsample_time)
+    void rewindPhase(T subsample_time, T mask)
     {
-        phase = phase_z + d_freq*(1.f-subsample_time);
+        phase = rack::simd::ifelse(mask, phase_z + d_freq*(1.f-subsample_time), phase);
     }
 
-    void setDiscreteFrequency(float df)
+    void setDiscreteFrequency(T df)
     {
-        d_freq = (df > 0.5f) ? 0.5f : df;
+        d_freq = rack::simd::ifelse((df > 0.5f), 0.5f, df);
     }
     
-    float getDiscreteFrequency(void)
+    T getDiscreteFrequency(void)
     {
         return d_freq;
     }
@@ -36,41 +37,42 @@ public:
     {
         phase_z = phase;
         phase = phase + d_freq;
-        if(phase >= 1.f) phase -= 1.f;
+        phase -= rack::simd::ifelse((phase >= 1.f), 1.f, 0.f);
     }
 
-    bool overturned(void)
+    T overturned(void)
     {
         return (phase_z > phase);
     }
 
-    float getOverturnDelay(void)
+    T getOverturnDelay(void)
     {
         return (phase/d_freq);
     }
 
-    float getSawSample(void)
+    T getSawSample(void)
     {
         return (2.f*phase - 1.f);
     }
 
-    float getSineSample(void)
+    T getSineSample(void)
     {
-        return std::sin(2.f*M_PI*phase);
+        return rack::simd::sin(2.f*M_PI*phase);
     }
 };
 
 #define N 32
 #define reso 64
 
+template <typename T>
 struct DelayBuffer {
 private:
-    float buffer[N+1] = {};
+    T buffer[N+1] = {};
     unsigned const length = N+1;
     unsigned index = 0;
 
 public:
-    float timeStep(float in_sample)
+    T timeStep(T in_sample)
     {
         buffer[index] = in_sample;
         index++;
@@ -79,33 +81,39 @@ public:
     }
 };
 
+extern float const blep_table[reso+1][2*N];
+extern float const blamp_table[reso+1][2*N];
+
+enum Discontinuity {
+    FIRST_ORDER = 0,
+    SECOND_ORDER
+};
+
+template <typename T>
 struct CorrectionBuffer {
 private:
-    float buffer[2*N] = {};
+    T buffer[2*N] = {};
     unsigned const length = 2*N;
     unsigned index = 0;
-    static float const blep_table[reso+1][2*N];
-    static float const blamp_table[reso+1][2*N];
+
+    T getBlepResidual(T d_int, T d_frac, T mask, unsigned i);
+    T getBlampResidual(T d_int, T d_frac, T mask, unsigned i);
 
 public:
-    enum Discontinuity {
-        FIRST_ORDER = 0,
-        SECOND_ORDER
-    };
-    void addDiscontinuity(float subsample_delay, float size, Discontinuity order)
+    void addDiscontinuity(T subsample_delay, T size, T mask, Discontinuity order)
     {
-        if(subsample_delay < 0.f || subsample_delay >= 1.f) return;
-        float d = length*subsample_delay;
-        unsigned d_int = std::floor(d);
-        float d_frac = d - d_int;
+        mask = rack::simd::ifelse(((subsample_delay < 0.f) | (subsample_delay >= 1.f)), 0.f, mask);
+        T d = length*subsample_delay;
+        T d_int = std::floor(d);
+        T d_frac = d - d_int;
         for(unsigned i = 0; i < length; i++){
-            float residual = 0.f;
+            T residual = 0.f;
             switch(order){
             case Discontinuity::FIRST_ORDER:
-                residual = (1.f-d_frac)*blep_table[d_int][i] + d_frac*blep_table[d_int+1][i];
+                residual = getBlepResidual(d_int, d_frac, mask, i);
                 break;
             case Discontinuity::SECOND_ORDER:
-                residual = (1.f-d_frac)*blamp_table[d_int][i] + d_frac*blamp_table[d_int+1][i];
+                residual = getBlampResidual(d_int, d_frac, mask, i);
                 break;
             default:
                 break;
@@ -113,13 +121,13 @@ public:
             
             unsigned p = index + i;
             if(p >= length) p -= length;
-            buffer[p] += size*residual;
+            buffer[p] += rack::simd::ifelse(mask, size*residual, 0.f);
         }
     }
 
-    float timeStep(void)
+    T timeStep(void)
     {
-        float ret = buffer[index];
+        T ret = buffer[index];
         buffer[index] = 0.f;
         index++;
         if(index >= length) index = 0;
@@ -129,9 +137,9 @@ public:
 
 struct BandlimitedSaw {
 private:
-    Phasor phasor;
-	DelayBuffer delay;
-	CorrectionBuffer correction;
+    Phasor<float> phasor;
+	DelayBuffer<float> delay;
+	CorrectionBuffer<float> correction;
     float tau = 1.f/48000.f;
     float freq = 0.f;
 
@@ -149,7 +157,7 @@ public:
 
     void reset(void)
     {
-        phasor.setPhase(0.f);
+        phasor.setPhase(0.f, 1);
         for(unsigned i = 0; i < N; i++){
             (void)process();
         }
@@ -176,25 +184,25 @@ public:
             overturned = true;
             overturn_delay = phasor.getOverturnDelay();
             if(overturn_delay > sync_delay){
-                correction.addDiscontinuity(overturn_delay, -2.f, CorrectionBuffer::Discontinuity::FIRST_ORDER);
+                correction.addDiscontinuity(overturn_delay, -2.f, 1, Discontinuity::FIRST_ORDER);
             }
-            phasor.rewindPhase(sync_delay);
+            phasor.rewindPhase(sync_delay, 1);
             if(overturn_delay <= sync_delay){
-                correction.addDiscontinuity(sync_delay, (-1.f - phasor.getSawSample()), CorrectionBuffer::Discontinuity::FIRST_ORDER);
+                correction.addDiscontinuity(sync_delay, (-1.f - phasor.getSawSample()), 1, Discontinuity::FIRST_ORDER);
             }
-            phasor.setPhase(tau*freq*sync_delay);
+            phasor.setPhase(tau*freq*sync_delay, 1);
             synced = false;
         }
         else if(synced){
-            phasor.rewindPhase(sync_delay);
-            correction.addDiscontinuity(sync_delay, (-1.f - phasor.getSawSample()), CorrectionBuffer::Discontinuity::FIRST_ORDER);
-            phasor.setPhase(tau*freq*sync_delay);
+            phasor.rewindPhase(sync_delay, 1);
+            correction.addDiscontinuity(sync_delay, (-1.f - phasor.getSawSample()), 1, Discontinuity::FIRST_ORDER);
+            phasor.setPhase(tau*freq*sync_delay, 1);
             synced = false;
         }
         else if(phasor.overturned()){
             overturned = true;
             overturn_delay = phasor.getOverturnDelay();
-			correction.addDiscontinuity(overturn_delay, -2.f, CorrectionBuffer::Discontinuity::FIRST_ORDER);
+			correction.addDiscontinuity(overturn_delay, -2.f, 1, Discontinuity::FIRST_ORDER);
 		}
         else{
             overturned = false;
