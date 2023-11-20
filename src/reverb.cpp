@@ -174,8 +174,8 @@ struct Reverb : Module {
 
 	void process(const ProcessArgs& args) override
 	{
-		float left = inputs[LEFT_INPUT].getVoltage();
-		float right = inputs[RIGHT_INPUT].isConnected() ? inputs[RIGHT_INPUT].getVoltage() : left;
+		float left = inputs[LEFT_INPUT].getVoltageSum();
+		float right = inputs[RIGHT_INPUT].isConnected() ? inputs[RIGHT_INPUT].getVoltageSum() : left;
 		simd::float_4 v = simd::float_4(left, right, left, right);
 
 		calculateProcessorParameters(v);
