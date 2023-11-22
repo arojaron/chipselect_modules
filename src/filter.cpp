@@ -39,7 +39,7 @@ struct Filter : Module {
 		TWO = 1,
 		NUM_OF_POLES_LEN
 	};
-	unsigned num_of_poles = TWO;
+	unsigned num_of_poles = FOUR;
 
 	cs::SimpleSvf<float_4> filter_base;
 	cs::SimpleSvf<float_4> filter_low;
@@ -116,20 +116,20 @@ struct Filter : Module {
 			case FOUR:
 				reso_param = simd::ifelse(reso_param < 0.f, 0.f, simd::sqrt(reso_param));
 				filter_base.setParams(cutoff_param, reso_param);
-				filter_base.process(in);
+				filter_base.process(in + pulse);
 				if(outputs[LOW_PASS_OUTPUT].isConnected()){
 					filter_low.setParams(cutoff_param, reso_param);
-					filter_low.process(filter_base.getLowPass() + pulse);
+					filter_low.process(filter_base.getLowPass());
 					outputs[LOW_PASS_OUTPUT].setVoltageSimd<float_4>(filter_low.getLowPass() + dry*in, 0);
 				}
 				if(outputs[BAND_PASS_OUTPUT].isConnected()){
 					filter_band.setParams(cutoff_param, reso_param);
-					filter_band.process(2.f*filter_base.getBandPass() + pulse);
+					filter_band.process(2.f*filter_base.getBandPass());
 					outputs[BAND_PASS_OUTPUT].setVoltageSimd<float_4>(filter_band.getBandPass() + dry*in, 0);
 				}
 				if(outputs[HIGH_PASS_OUTPUT].isConnected()){
 					filter_high.setParams(cutoff_param, reso_param);
-					filter_high.process(filter_base.getHighPass() + pulse);
+					filter_high.process(filter_base.getHighPass());
 					outputs[HIGH_PASS_OUTPUT].setVoltageSimd<float_4>(filter_high.getHighPass() + dry*in, 0);
 				}
 			break;
