@@ -43,6 +43,14 @@ public:
         return (phase/d_freq);
     }
 
+    T halfOverturned(void) {
+        return ((phase_z <= 0.5f) && (phase > 0.5));
+    }
+
+    T getHalfOverturnDelay(void) {
+        return (phase - 0.5f)/d_freq;
+    }
+
     T getSawSample(void) {
         return (2.f*phase - 1.f);
     }
@@ -118,8 +126,9 @@ public:
     }
 };
 
-struct BandlimitedSaw {
-private:
+template <typename T>
+struct BandlimitedOscillator {
+protected:
     Phasor<float> phasor;
 	DelayBuffer delay;
 	CorrectionBuffer correction;
@@ -139,14 +148,9 @@ public:
     void reset(void) {
         phasor.setPhase(0.f, 1);
         for(unsigned i = 0; i < N; i++){
-            (void)process();
+            (void)static_cast<T*>(this)->process();
         }
     }
-
-    bool synced = 0.f;
-    float sync_delay = 0.f;
-    bool overturned = 0.f;
-    float overturn_delay = 0.f;
 
     void sync(float subsample_delay) {
         if(0.5f > phasor.getDiscreteFrequency()){
@@ -154,9 +158,17 @@ public:
             synced = true;
         }
     }
+    virtual float process(void) { return 0.f; }
+    virtual float getAliasedSample(void) { return 0.f; }
 
-    float process(void)
-    {
+    bool synced = 0.f;
+    float sync_delay = 0.f;
+    bool overturned = 0.f;
+    float overturn_delay = 0.f;
+};
+
+struct Saw : BandlimitedOscillator<Saw> {
+    float process(void) override {
         float ret = 5.f*(delay.timeStep(phasor.getSawSample()) + correction.timeStep());
         phasor.timeStep();
 
@@ -190,7 +202,7 @@ public:
         return ret;
     }
 
-    float getAliasedSawSample(void) {
+    float getAliasedSample(void) override {
         return 5.f*phasor.getSawSample();
     }
 };
