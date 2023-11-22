@@ -37,8 +37,8 @@ struct Sawtooth : Module {
 	bool fm_enabled = false;
 
 	dsp::BooleanTrigger reset_trigger[4];
-	cs::BandlimitedSaw modulator[4];
-	cs::BandlimitedSaw carrier[4];
+	cs::Saw modulator[4];
+	cs::Saw carrier[4];
 
 	Sawtooth() {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -102,7 +102,7 @@ struct Sawtooth : Module {
 				float fm_depth = params[FM_DEPTH_PARAM].getValue() + 0.1f*inputs[FM_DEPTH_MOD_INPUT].getVoltage();
 				float_4 fm;
 				for(unsigned i = 0; i < 4; i++) {
-					fm[i] = fm_depth * modulator[i].getAliasedSawSample();
+					fm[i] = fm_depth * modulator[i].getAliasedSample();
 				}
 				carrier_pitch += fm;
 			}
