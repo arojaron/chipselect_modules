@@ -33,12 +33,23 @@ struct Sawtooth : Module {
 		LIGHTS_LEN
 	};
 
+	enum OscillatorType {
+		SAWTOOTH,
+		TRIANGLE,
+		OSCILLATOR_TYPE_LEN
+	};
+
+	unsigned modulator_type = SAWTOOTH;
+	unsigned carrier_type = SAWTOOTH;
+
 	bool sync_enabled = false;
 	bool fm_enabled = false;
 
 	dsp::BooleanTrigger reset_trigger[4];
-	cs::Saw modulator[4];
-	cs::Saw carrier[4];
+	cs::Triangle tri_A[4];
+	cs::Triangle tri_B[4];
+	cs::Saw saw_A[4];
+	cs::Saw saw_B[4];
 
 	Sawtooth() {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -85,13 +96,26 @@ struct Sawtooth : Module {
 			modulator_pitch += params[MODULATOR_TUNE_PARAM].getValue();
 			float_4 modulator_freq = dsp::approxExp2_taylor5(modulator_pitch);
 
-			for(unsigned i = 0; i < 4; i++) {
-				modulator[i].setFrequency(modulator_freq[i]);
-				if(reset[i]){
-					modulator[i].reset();
+			switch(modulator_type){
+				case SAWTOOTH:
+				for(unsigned i = 0; i < 4; i++) {
+					saw_A[i].setFrequency(modulator_freq[i]);
+					if(reset[i]){
+						saw_A[i].reset();
+					}
+					modulator_signal[i] = saw_A[i].process();
 				}
-				modulator_signal[i] = modulator[i].process();
-			}
+				break;
+				case TRIANGLE:
+				for(unsigned i = 0; i < 4; i++) {
+					tri_A[i].setFrequency(modulator_freq[i]);
+					if(reset[i]){
+						tri_A[i].reset();
+					}
+					modulator_signal[i] = tri_A[i].process();
+				}
+				break;
+			};
 		}
 		
 		if(outputs[CARRIER_OUTPUT].isConnected()){
@@ -101,37 +125,102 @@ struct Sawtooth : Module {
 			if(fm_enabled){
 				float fm_depth = params[FM_DEPTH_PARAM].getValue() + 0.1f*inputs[FM_DEPTH_MOD_INPUT].getVoltage();
 				float_4 fm;
-				for(unsigned i = 0; i < 4; i++) {
-					fm[i] = fm_depth * modulator[i].getAliasedSample();
-				}
+				switch(modulator_type){
+					case SAWTOOTH:
+					for(unsigned i = 0; i < 4; i++) {
+						fm[i] = fm_depth * saw_A[i].getAliasedSample();
+					}
+					break;
+					case TRIANGLE:
+					for(unsigned i = 0; i < 4; i++) {
+						fm[i] = fm_depth * tri_A[i].getAliasedSample();
+					}
+					break;
+				};
 				carrier_pitch += fm;
 			}
 			float_4 carrier_freq = dsp::approxExp2_taylor5(carrier_pitch);
-			for(unsigned i = 0; i < 4; i++) {
-				carrier[i].setFrequency(carrier_freq[i]);
-				if(reset[i]){
-					carrier[i].reset();
+			switch(carrier_type){
+				case SAWTOOTH:
+				for(unsigned i = 0; i < 4; i++) {
+					saw_B[i].setFrequency(carrier_freq[i]);
+					if(reset[i]){
+						saw_B[i].reset();
+					}
+					else if(sync_enabled){
+						switch(modulator_type){
+							case SAWTOOTH:
+							if(saw_A[i].overturned){
+								saw_B[i].sync(saw_A[i].overturn_delay);
+							}
+							break;
+							case TRIANGLE:
+							if(tri_A[i].overturned){
+								saw_B[i].sync(tri_A[i].overturn_delay);
+							}
+							break;
+						};
+					}
+					carrier_signal[i] = saw_B[i].process();
 				}
-				else if(sync_enabled && modulator[i].overturned){
-					carrier[i].sync(modulator[i].overturn_delay);
+				break;
+				case TRIANGLE:
+				for(unsigned i = 0; i < 4; i++) {
+					tri_B[i].setFrequency(carrier_freq[i]);
+					if(reset[i]){
+						tri_B[i].reset();
+					}
+					else if(sync_enabled){
+						switch(modulator_type){
+							case SAWTOOTH:
+							if(saw_A[i].overturned){
+								tri_B[i].sync(saw_A[i].overturn_delay);
+							}
+							break;
+							case TRIANGLE:
+							if(tri_A[i].overturned){
+								tri_B[i].sync(tri_A[i].overturn_delay);
+							}
+							break;
+						};
+					}
+					carrier_signal[i] = tri_B[i].process();
 				}
-				carrier_signal[i] = carrier[i].process();
-			}
+				break;
+			};
 		}
 
 		outputs[MODULATOR_OUTPUT].setVoltageSimd(modulator_signal, 0);
 		outputs[CARRIER_OUTPUT].setVoltageSimd(carrier_signal, 0);
 	}
 
-	void onSampleRateChange(const SampleRateChangeEvent& e) override
-	{
+	void onSampleRateChange(const SampleRateChangeEvent& e) override {
 		for(unsigned i = 0; i < 4; i++) {
-			modulator[i].setSampleTime(e.sampleTime);
-			carrier[i].setSampleTime(e.sampleTime);
+			tri_A[i].setSampleTime(e.sampleTime);
+			tri_B[i].setSampleTime(e.sampleTime);
+			saw_A[i].setSampleTime(e.sampleTime);
+			saw_B[i].setSampleTime(e.sampleTime);		
+		}
+	}
+
+	json_t* dataToJson() override {
+		json_t* rootJ = json_object();
+		json_object_set_new(rootJ, "modulator_type", json_integer(modulator_type));
+		json_object_set_new(rootJ, "carrier_type", json_integer(carrier_type));
+		return rootJ;
+	}
+
+	void dataFromJson(json_t* rootJ) override {
+		json_t* modTypeJ = json_object_get(rootJ, "modulator_type");
+		if (modTypeJ) {
+			modulator_type = json_integer_value(modTypeJ);
+		}
+		json_t* carTypeJ = json_object_get(rootJ, "carrier_type");
+		if (carTypeJ) {
+			carrier_type = json_integer_value(carTypeJ);
 		}
 	}
 };
-
 
 struct SawtoothWidget : ModuleWidget {
 	SawtoothWidget(Sawtooth* module) {
@@ -153,6 +242,43 @@ struct SawtoothWidget : ModuleWidget {
 
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 34.29)), module, Sawtooth::MODULATOR_OUTPUT));
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48, 105.41)), module, Sawtooth::CARRIER_OUTPUT));
+	}
+
+	void appendContextMenu(Menu* menu) override {
+		Sawtooth* module = dynamic_cast<Sawtooth*>(this->module);
+		std::string types_names[Sawtooth::OscillatorType::OSCILLATOR_TYPE_LEN] = {"Sawtooth", "Triangle"};
+
+		menu->addChild(createMenuLabel("Modulator type"));
+		struct ModTypeItem : MenuItem {
+			Sawtooth* module;
+			unsigned type;
+			void onAction(const event::Action& e) override {
+				module->modulator_type = type;
+			}
+		};
+		for (unsigned i = 0; i < Sawtooth::OscillatorType::OSCILLATOR_TYPE_LEN; i++) {
+			ModTypeItem* type_item = createMenuItem<ModTypeItem>(types_names[i]);
+			type_item->rightText = CHECKMARK(module->modulator_type == i);
+			type_item->module = module;
+			type_item->type = i;
+			menu->addChild(type_item);
+		}
+
+		menu->addChild(createMenuLabel("Carrier type"));
+		struct CarTypeItem : MenuItem {
+			Sawtooth* module;
+			unsigned type;
+			void onAction(const event::Action& e) override {
+				module->carrier_type = type;
+			}
+		};
+		for (unsigned i = 0; i < Sawtooth::OscillatorType::OSCILLATOR_TYPE_LEN; i++) {
+			CarTypeItem* type_item = createMenuItem<CarTypeItem>(types_names[i]);
+			type_item->rightText = CHECKMARK(module->carrier_type == i);
+			type_item->module = module;
+			type_item->type = i;
+			menu->addChild(type_item);
+		}
 	}
 };
 

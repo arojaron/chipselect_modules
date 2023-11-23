@@ -55,6 +55,13 @@ public:
         return (2.f*phase - 1.f);
     }
 
+    T getTriangleSample(void) {
+        T ret = phase * 4.f;
+        ret = rack::simd::ifelse(ret > 2.f, 4.f-ret, ret);
+        ret -= T(1.f);
+        return ret;
+    }
+
     T getSineSample(void) {
         return rack::simd::sin(2.f*M_PI*phase);
     }
@@ -126,9 +133,8 @@ public:
     }
 };
 
-template <typename T>
-struct BandlimitedOscillator {
-protected:
+struct Saw {
+private:
     Phasor<float> phasor;
 	DelayBuffer delay;
 	CorrectionBuffer correction;
@@ -148,7 +154,7 @@ public:
     void reset(void) {
         phasor.setPhase(0.f, 1);
         for(unsigned i = 0; i < N; i++){
-            (void)static_cast<T*>(this)->process();
+            (void)process();
         }
     }
 
@@ -158,17 +164,13 @@ public:
             synced = true;
         }
     }
-    virtual float process(void) { return 0.f; }
-    virtual float getAliasedSample(void) { return 0.f; }
 
     bool synced = 0.f;
     float sync_delay = 0.f;
     bool overturned = 0.f;
     float overturn_delay = 0.f;
-};
 
-struct Saw : BandlimitedOscillator<Saw> {
-    float process(void) override {
+    float process(void) {
         float ret = 5.f*(delay.timeStep(phasor.getSawSample()) + correction.timeStep());
         phasor.timeStep();
 
@@ -202,8 +204,76 @@ struct Saw : BandlimitedOscillator<Saw> {
         return ret;
     }
 
-    float getAliasedSample(void) override {
+    float getAliasedSample(void) {
         return 5.f*phasor.getSawSample();
+    }
+};
+
+struct Triangle {
+private:
+    Phasor<float> phasor;
+	DelayBuffer delay;
+	CorrectionBuffer correction;
+    float tau = 1.f/48000.f;
+    float freq = 0.f;
+
+public:
+    void setSampleTime(float sample_time) {
+        tau = sample_time;
+    }
+
+    void setFrequency(float frequency) {
+        freq = frequency;
+        phasor.setDiscreteFrequency(tau*frequency);
+    }
+
+    void reset(void) {
+        phasor.setPhase(0.f, 1);
+        for(unsigned i = 0; i < N; i++){
+            (void)process();
+        }
+    }
+
+    void sync(float subsample_delay) {
+        if(0.5f > phasor.getDiscreteFrequency()){
+            sync_delay = subsample_delay;
+            synced = true;
+        }
+    }
+
+    bool synced = 0.f;
+    float sync_delay = 0.f;
+    bool overturned = 0.f;
+    float overturn_delay = 0.f;
+
+    float process(void) {
+        float ret = 5.f*(delay.timeStep(phasor.getTriangleSample()) + correction.timeStep());
+        phasor.timeStep();
+
+        if(synced){
+            phasor.rewindPhase(sync_delay, true);
+            correction.addDiscontinuity(sync_delay, (-1.f - phasor.getTriangleSample()), Discontinuity::FIRST_ORDER);
+            phasor.setPhase(tau*freq*sync_delay, true);
+            synced = false;
+        }
+
+        if(phasor.overturned()){
+            overturned = true;
+            overturn_delay = phasor.getOverturnDelay();
+            correction.addDiscontinuity(overturn_delay, 8.f*phasor.getDiscreteFrequency(), Discontinuity::SECOND_ORDER);
+        }
+        else if(phasor.halfOverturned()){
+            correction.addDiscontinuity(phasor.getHalfOverturnDelay(), -8.f*phasor.getDiscreteFrequency(), Discontinuity::SECOND_ORDER);
+        }
+        else{
+            overturned = false;
+        }
+
+        return ret;
+    }
+
+    float getAliasedSample(void) {
+        return 5.f*phasor.getTriangleSample();
     }
 };
 }
