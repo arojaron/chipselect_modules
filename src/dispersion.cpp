@@ -28,7 +28,7 @@ struct Dispersion : Module {
 		LIGHTS_LEN
 	};
 
-	#define M 16
+	#define M 32
 	cs::SeriesAllpass<float_4, M> filter;
 
 	Dispersion()
