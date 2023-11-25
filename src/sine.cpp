@@ -30,9 +30,9 @@ struct Sine : Module {
 
 	Sine() {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-		configParam(RATIO_NUM_PARAM, 1.f, 20.f, 1.f, "Frequency ratio numerator");
+		configParam(RATIO_NUM_PARAM, 1.f, 11.f, 1.f, "Frequency ratio numerator");
 		getParamQuantity(RATIO_NUM_PARAM)->snapEnabled = true;
-		configParam(RATIO_DEN_PARAM, 1.f, 20.f, 1.f, "Frequency ratio denominator");
+		configParam(RATIO_DEN_PARAM, 1.f, 11.f, 1.f, "Frequency ratio denominator");
 		getParamQuantity(RATIO_DEN_PARAM)->snapEnabled = true;
 		configParam(PHASE_PARAM, -1.f, 1.f, 0.f, "Phase modulation/offset");
 		configInput(VPOCT_INPUT, "V/Oct");
