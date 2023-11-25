@@ -16,4 +16,5 @@ void init(Plugin* p) {
 	p->addModel(modelFilter);
 	p->addModel(modelDispersion);
 	p->addModel(modelSawtooth);
+	p->addModel(modelSine);
 }

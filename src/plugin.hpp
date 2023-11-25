@@ -12,3 +12,4 @@ extern Model* modelReverb;
 extern Model* modelFilter;
 extern Model* modelDispersion;
 extern Model* modelSawtooth;
+extern Model* modelSine;

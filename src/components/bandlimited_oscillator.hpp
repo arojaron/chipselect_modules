@@ -62,8 +62,8 @@ public:
         return ret;
     }
 
-    T getSineSample(void) {
-        return rack::simd::sin(2.f*M_PI*phase);
+    T getSineSample(T phase_offset) {
+        return rack::simd::sin(2.f*M_PI*(phase+phase_offset));
     }
 };
 

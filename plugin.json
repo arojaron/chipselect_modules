@@ -36,6 +36,12 @@
       "name": "Sawtooth",
       "description": "",
       "tags": []
+    },
+    {
+      "slug": "Sine",
+      "name": "Sine",
+      "description": "",
+      "tags": []
     }
   ]
 }
