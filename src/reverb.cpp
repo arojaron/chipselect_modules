@@ -203,8 +203,16 @@ struct Reverb : Module {
 		v = delay.process(v);
 		back_fed = v * simd::float_4(p.feedback);
 
-		outputs[LEFT_OUTPUT].setVoltage(left);
-		outputs[RIGHT_OUTPUT].setVoltage(right);
+		if(outputs[RIGHT_OUTPUT].isConnected()){
+			outputs[LEFT_OUTPUT].setChannels(1);
+			outputs[LEFT_OUTPUT].setVoltage(left);
+			outputs[RIGHT_OUTPUT].setVoltage(right);
+		}
+		else{
+			outputs[LEFT_OUTPUT].setChannels(2);
+			outputs[LEFT_OUTPUT].setVoltage(left, 0);
+			outputs[LEFT_OUTPUT].setVoltage(right, 1);
+		}
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override
