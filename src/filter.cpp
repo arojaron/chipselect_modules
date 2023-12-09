@@ -107,7 +107,7 @@ struct Filter : Module {
 		}
 		ping_envelope.setFrequency(cutoff_param);
 		float_4 ping_level = inputs[PING_INPUT].getPolyVoltageSimd<float_4>(0);
-		float_4 pulse = ping_level * ping_envelope.process(args.sampleTime, ping_trigger.process(ping_level));
+		float_4 pulse = ping_envelope.process(args.sampleTime, ping_trigger.process(ping_level));
 		float_4 in = inputs[SIGNAL_INPUT].getPolyVoltageSimd<float_4>(0);
 		float_4 dry = float_4(params[DRY_PARAM].getValue());
 
