@@ -166,7 +166,7 @@ struct Reverb : Module {
 			p.feedback = 1.f;
 		}
 		else{
-			feedback_param = rescale(feedback_param, 0.f, 1.f, std::log2(0.1f), std::log2(200.f));
+			feedback_param = rescale(feedback_param, 0.f, 1.f, std::log2(0.01f), std::log2(200.f));
 			float reverb_time = dsp::approxExp2_taylor5(feedback_param + params[FEEDBACK_MOD_PARAM].getValue()*inputs[FEEDBACK_MOD_INPUT].getVoltage());
 			p.feedback = (1.f - p.ducking_depth) * std::exp2(-6.f*(delay_time/reverb_time));
 		}
