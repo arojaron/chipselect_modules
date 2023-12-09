@@ -86,8 +86,9 @@ struct Sawtooth : Module {
 		lights[FM_ENABLE_LIGHT].setBrightness(fm_enabled);
 
 		bool reset[4];
+		float_4 reset_signal = inputs[RESET_INPUT].getPolyVoltageSimd<float_4>(0);
 		for(unsigned i = 0; i < 4; i++){
-			reset[i] = reset_trigger[i].process(inputs[RESET_INPUT].getVoltage(i));
+			reset[i] = reset_trigger[i].process(reset_signal[i]);
 		}
 
 		if(outputs[MODULATOR_OUTPUT].isConnected() || sync_enabled || fm_enabled){
@@ -123,8 +124,8 @@ struct Sawtooth : Module {
 			carrier_pitch +=  params[CARRIER_OCT_PARAM].getValue();
 			carrier_pitch += params[CARRIER_TUNE_PARAM].getValue();
 			if(fm_enabled){
+				float_4 fm = 0;
 				float fm_depth = params[FM_DEPTH_PARAM].getValue() + 0.1f*inputs[FM_DEPTH_MOD_INPUT].getVoltage();
-				float_4 fm;
 				switch(modulator_type){
 					case SAWTOOTH:
 					for(unsigned i = 0; i < 4; i++) {
