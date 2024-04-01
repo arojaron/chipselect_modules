@@ -44,15 +44,15 @@ struct SimpleSvf {
     }
 
     T getLowPass(void) {
-        return lp;
+        return R*lp;
     }
 
     T getBandPass(void) {
-        return bp;
+        return R*bp;
     }
 
     T getHighPass(void) {
-        return hp;
+        return R*hp;
     }
 
     T getAllPass(void) {

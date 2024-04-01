@@ -103,7 +103,7 @@ struct Filter : Module {
 			reso_param *= 10.f*freq_tuning;
 		}
 		else{
-			reso_param = rescale(reso_param, 0.f, 1.f, 0.5f, 1000.f);
+			reso_param = rescale(reso_param, 0.f, 1.f, 1.f, 1000.f);
 		}
 		ping_envelope.setFrequency(cutoff_param);
 		float_4 ping_level = inputs[PING_INPUT].getPolyVoltageSimd<float_4>(0);
@@ -111,31 +111,32 @@ struct Filter : Module {
 		float_4 in = inputs[SIGNAL_INPUT].getPolyVoltageSimd<float_4>(0);
 		float_4 dry = float_4(params[DRY_PARAM].getValue());
 
+		float_4 sqrt_reso_param = simd::ifelse(reso_param < 1.f, 1.f, simd::sqrt(reso_param));
+
 		switch(num_of_poles){
 			default:
 			case FOUR:
-				reso_param = simd::ifelse(reso_param < 0.f, 0.f, simd::sqrt(reso_param));
-				filter_base.setParams(cutoff_param, reso_param);
+				filter_base.setParams(cutoff_param, sqrt_reso_param);
 				filter_base.process(in);
 				if(outputs[LOW_PASS_OUTPUT].isConnected()){
-					filter_low.setParams(cutoff_param, reso_param);
-					filter_low.process(filter_base.getLowPass() + pulse);
+					filter_low.setParams(cutoff_param, sqrt_reso_param);
+					filter_low.process(filter_base.getLowPass() + sqrt_reso_param*pulse);
 					outputs[LOW_PASS_OUTPUT].setVoltageSimd<float_4>(filter_low.getLowPass() + dry*in, 0);
 				}
 				if(outputs[BAND_PASS_OUTPUT].isConnected()){
-					filter_band.setParams(cutoff_param, reso_param);
-					filter_band.process(2.f*filter_base.getBandPass() + pulse);
+					filter_band.setParams(cutoff_param, sqrt_reso_param);
+					filter_band.process(2.f*filter_base.getBandPass() + sqrt_reso_param*pulse);
 					outputs[BAND_PASS_OUTPUT].setVoltageSimd<float_4>(filter_band.getBandPass() + dry*in, 0);
 				}
 				if(outputs[HIGH_PASS_OUTPUT].isConnected()){
-					filter_high.setParams(cutoff_param, reso_param);
-					filter_high.process(filter_base.getHighPass() + pulse);
+					filter_high.setParams(cutoff_param, sqrt_reso_param);
+					filter_high.process(filter_base.getHighPass() + sqrt_reso_param*pulse);
 					outputs[HIGH_PASS_OUTPUT].setVoltageSimd<float_4>(filter_high.getHighPass() + dry*in, 0);
 				}
 			break;
 			case TWO:
 				filter_base.setParams(cutoff_param, reso_param);
-				filter_base.process(in + pulse);
+				filter_base.process(in + sqrt_reso_param*pulse);
 				outputs[LOW_PASS_OUTPUT].setVoltageSimd<float_4>(filter_base.getLowPass() + dry*in, 0);
 				outputs[BAND_PASS_OUTPUT].setVoltageSimd<float_4>(simd::sqrt(2.f)*filter_base.getBandPass() + dry*in, 0);
 				outputs[HIGH_PASS_OUTPUT].setVoltageSimd<float_4>(filter_base.getHighPass() + dry*in, 0);
